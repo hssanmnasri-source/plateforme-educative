@@ -143,6 +143,22 @@ app.post('/paymee-webhook', async (req, res) => {
 });
 
 // ========================================
+// Root route
+// ========================================
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Education Platform Backend API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/health',
+      webhook: '/paymee-webhook',
+      testWebhook: '/test-webhook'
+    }
+  });
+});
+
+// ========================================
 // Route de test (vérifier que le serveur fonctionne)
 // ========================================
 app.get('/health', (req, res) => {
