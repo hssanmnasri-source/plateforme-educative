@@ -466,13 +466,79 @@ app.post('/sync-payment', async (req, res) => {
       return res.json({ success: true, message: 'Paiement déjà complété' });
     }
 
+    // Vérifier avec Paymee si le paiement a un token
+    let paymeeStatus = null;
+    if (paymentData.paymeeToken) {
+      try {
+        console.log('🔍 Vérification du statut avec Paymee...');
+        const paymeeApiUrl = process.env.PAYMEE_API_URL || 'https://sandbox.paymee.tn/api/v2';
+        const paymeeToken = process.env.PAYMEE_API_TOKEN;
+        
+        const paymeeResponse = await fetch(`${paymeeApiUrl}/payments/check`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Token ${paymeeToken}`
+          },
+          body: JSON.stringify({ token: paymentData.paymeeToken })
+        });
+
+        if (paymeeResponse.ok) {
+          const paymeeData = await paymeeResponse.json();
+          console.log('📊 Statut Paymee:', paymeeData);
+          
+          if (paymeeData.status && paymeeData.data) {
+            paymeeStatus = paymeeData.data.status;
+            console.log('✅ Statut Paymee récupéré:', paymeeStatus);
+            
+            // Si Paymee dit que le paiement a échoué, ne pas le marquer comme complété
+            if (paymeeStatus === 'failed' || paymeeStatus === 'cancelled') {
+              console.log('❌ Paymee indique que le paiement a échoué');
+              await paymentRef.update({
+                status: 'failed',
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                synced: true
+              });
+              return res.json({ 
+                success: false, 
+                message: 'Le paiement a échoué selon Paymee',
+                paymeeStatus 
+              });
+            }
+            
+            // Si Paymee dit que c'est en attente, ne pas le marquer comme complété
+            if (paymeeStatus === 'pending') {
+              console.log('⏳ Paymee indique que le paiement est en attente');
+              return res.json({ 
+                success: false, 
+                message: 'Le paiement est toujours en attente',
+                paymeeStatus 
+              });
+            }
+          }
+        } else {
+          console.warn('⚠️ Impossible de vérifier avec Paymee:', paymeeResponse.status);
+        }
+      } catch (paymeeError) {
+        console.warn('⚠️ Erreur lors de la vérification Paymee (non bloquant):', paymeeError.message);
+        // Continuer quand même si on ne peut pas vérifier avec Paymee
+      }
+    }
+
+    // Si le statut actuel est "failed" mais qu'on n'a pas pu vérifier avec Paymee,
+    // on peut quand même essayer de le marquer comme complété (cas où le webhook a manqué)
+    if (paymentData.status === 'failed' && !paymeeStatus) {
+      console.log('⚠️ Paiement marqué comme "failed" mais pas de vérification Paymee possible - marquage comme complété');
+    }
+
     console.log('📝 Mise à jour du statut du paiement...');
     // Mettre à jour le paiement
     await paymentRef.update({
       status: 'completed',
       completedAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      synced: true // Marquer comme synchronisé manuellement
+      synced: true, // Marquer comme synchronisé manuellement
+      paymeeStatus: paymeeStatus || 'verified_manually'
     });
 
     console.log('👤 Ajout du cours à l\'utilisateur...');
