@@ -12,14 +12,34 @@ import notificationService from './src/services/notification.service.js';
 dotenv.config();
 
 // Initialize Firebase Admin
-const serviceAccount = JSON.parse(
-  process.env.FIREBASE_SERVICE_ACCOUNT || 
-  readFileSync('./education-platform-backend-firebase-adminsdk-fbsvc-055e9861b5.json', 'utf8')
-);
+let serviceAccount;
+try {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    console.log('✅ Firebase Service Account loaded from environment variable');
+  } else {
+    try {
+      serviceAccount = JSON.parse(readFileSync('./education-platform-backend-firebase-adminsdk-fbsvc-055e9861b5.json', 'utf8'));
+      console.log('✅ Firebase Service Account loaded from file');
+    } catch (fileError) {
+      console.error('❌ Failed to load Firebase Service Account from file:', fileError.message);
+      throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable or service account file is required');
+    }
+  }
+} catch (error) {
+  console.error('❌ Failed to parse Firebase Service Account:', error.message);
+  throw error;
+}
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+try {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+  console.log('✅ Firebase Admin initialized successfully');
+} catch (error) {
+  console.error('❌ Failed to initialize Firebase Admin:', error.message);
+  throw error;
+}
 
 const db = admin.firestore();
 const app = express();
@@ -321,7 +341,11 @@ app.post('/sync-payment', async (req, res) => {
     });
   } catch (error) {
     console.error('💥 Erreur synchronisation:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Stack trace:', error.stack);
+    res.status(500).json({ 
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
