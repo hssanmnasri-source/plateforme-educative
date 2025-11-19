@@ -94,108 +94,112 @@ app.options('/paymee-webhook', (req, res) => {
 });
 
 app.post('/paymee-webhook', async (req, res) => {
-  try {
-    console.log('📥 Webhook Paymee reçu:', JSON.stringify(req.body, null, 2));
+  // Répondre immédiatement à Paymee pour éviter les timeouts (502 Bad Gateway)
+  res.status(200).json({ received: true, message: 'Webhook received' });
+  
+  // Traiter le webhook de manière asynchrone (sans bloquer la réponse)
+  (async () => {
+    try {
+      console.log('📥 Webhook Paymee reçu:', JSON.stringify(req.body, null, 2));
 
-    const {
-      token,
-      check_sum,
-      payment_status,
-      order_id,
-      transaction_id,
-      amount,
-      received_amount,
-      cost
-    } = req.body;
+      const {
+        token,
+        check_sum,
+        payment_status,
+        order_id,
+        transaction_id,
+        amount,
+        received_amount,
+        cost
+      } = req.body;
 
-    // Vérifier la signature
-    const expectedChecksum = verifyPaymeeChecksum(
-      token,
-      payment_status,
-      process.env.PAYMEE_API_TOKEN
-    );
+      // Vérifier la signature
+      const expectedChecksum = verifyPaymeeChecksum(
+        token,
+        payment_status,
+        process.env.PAYMEE_API_TOKEN
+      );
 
-    if (check_sum !== expectedChecksum) {
-      console.error('❌ Signature invalide');
-      console.log('Expected:', expectedChecksum);
-      console.log('Received:', check_sum);
-      return res.status(401).json({ error: 'Invalid signature' });
+      if (check_sum !== expectedChecksum) {
+        console.error('❌ Signature invalide');
+        console.log('Expected:', expectedChecksum);
+        console.log('Received:', check_sum);
+        return; // Ne pas envoyer de réponse, déjà envoyée
+      }
+
+      console.log('✅ Signature valide');
+
+      // Récupérer le paiement depuis Firestore
+      const paymentRef = db.collection('payments').doc(order_id);
+      const paymentDoc = await paymentRef.get();
+
+      if (!paymentDoc.exists) {
+        console.error('❌ Paiement introuvable:', order_id);
+        return; // Ne pas envoyer de réponse, déjà envoyée
+      }
+
+      const paymentData = paymentDoc.data();
+      console.log('📄 Paiement trouvé:', paymentData);
+
+      if (payment_status === true) {
+        console.log('💰 Paiement réussi - Mise à jour...');
+
+        // 1. Mettre à jour le paiement
+        await paymentRef.update({
+          status: 'completed',
+          paymeeTransactionId: transaction_id,
+          receivedAmount: received_amount,
+          cost: cost,
+          completedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        // 2. Ajouter le cours à l'utilisateur
+        const userRef = db.collection('users').doc(paymentData.userId);
+        await userRef.update({
+          purchasedCourses: admin.firestore.FieldValue.arrayUnion(paymentData.courseId)
+        });
+
+        // 3. Incrémenter le compteur d'inscriptions du cours
+        const courseRef = db.collection('courses').doc(paymentData.courseId);
+        await courseRef.update({
+          enrolledCount: admin.firestore.FieldValue.increment(1)
+        });
+
+        await notificationService.sendToUser(paymentData.userId, {
+          title: '🎉 Paiement confirmé !',
+          body: `Vous avez maintenant accès à votre cours.`,
+          icon: '/logo.png',
+          data: {
+            type: 'payment_success',
+            courseId: paymentData.courseId,
+            paymentId: order_id
+          }
+        });
+
+        console.log('✅ Paiement traité avec succès');
+        console.log(`   - Transaction ID: ${transaction_id}`);
+        console.log(`   - Montant: ${received_amount} TND`);
+        console.log(`   - Frais: ${cost} TND`);
+
+      } else {
+        console.log('❌ Paiement échoué');
+
+        // Mettre à jour le statut à "failed"
+        await paymentRef.update({
+          status: 'failed',
+          completedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      }
+
+      console.log('✅ Webhook traité avec succès');
+
+    } catch (error) {
+      console.error('💥 Erreur webhook:', error);
+      console.error('Stack trace:', error.stack);
     }
-
-    console.log('✅ Signature valide');
-
-    // Récupérer le paiement depuis Firestore
-    const paymentRef = db.collection('payments').doc(order_id);
-    const paymentDoc = await paymentRef.get();
-
-    if (!paymentDoc.exists) {
-      console.error('❌ Paiement introuvable:', order_id);
-      return res.status(404).json({ error: 'Payment not found' });
-    }
-
-    const paymentData = paymentDoc.data();
-    console.log('📄 Paiement trouvé:', paymentData);
-
-    if (payment_status === true) {
-      console.log('💰 Paiement réussi - Mise à jour...');
-
-      // 1. Mettre à jour le paiement
-      await paymentRef.update({
-        status: 'completed',
-        paymeeTransactionId: transaction_id,
-        receivedAmount: received_amount,
-        cost: cost,
-        completedAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-
-      // 2. Ajouter le cours à l'utilisateur
-      const userRef = db.collection('users').doc(paymentData.userId);
-      const userSnapshot = await userRef.get();
-
-      await userRef.update({
-        purchasedCourses: admin.firestore.FieldValue.arrayUnion(paymentData.courseId)
-      });
-
-      // 3. Incrémenter le compteur d'inscriptions du cours
-      const courseRef = db.collection('courses').doc(paymentData.courseId);
-      await courseRef.update({
-        enrolledCount: admin.firestore.FieldValue.increment(1)
-      });
-
-      await notificationService.sendToUser(paymentData.userId, {
-        title: '🎉 Paiement confirmé !',
-        body: `Vous avez maintenant accès à votre cours.`,
-        icon: '/logo.png',
-        data: {
-          type: 'payment_success',
-          courseId: paymentData.courseId,
-          paymentId: order_id
-        }
-      });
-
-      console.log('✅ Paiement traité avec succès');
-      console.log(`   - Transaction ID: ${transaction_id}`);
-      console.log(`   - Montant: ${received_amount} TND`);
-      console.log(`   - Frais: ${cost} TND`);
-
-    } else {
-      console.log('❌ Paiement échoué');
-
-      // Mettre à jour le statut à "failed"
-      await paymentRef.update({
-        status: 'failed',
-        completedAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-    }
-
-    res.json({ success: true, message: 'Webhook processed' });
-
-  } catch (error) {
-    console.error('💥 Erreur webhook:', error);
-    res.status(500).json({ error: 'Internal server error', details: error.message });
-  }
+  })();
 });
 
 // ========================================
