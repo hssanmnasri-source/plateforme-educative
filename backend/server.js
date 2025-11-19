@@ -67,14 +67,30 @@ try {
     throw new Error('Private key format appears invalid - missing BEGIN/END markers');
   }
   
+  // Check if private key has proper newlines (should have \n, not actual newlines)
+  const hasNewlines = serviceAccount.private_key.includes('\n');
+  const hasEscapedNewlines = serviceAccount.private_key.includes('\\n');
+  if (!hasNewlines && !hasEscapedNewlines) {
+    console.warn('⚠️ Private key might be missing newline characters');
+  }
+  
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
   });
   console.log('✅ Firebase Admin initialized successfully');
   console.log('   Project:', serviceAccount.project_id);
   console.log('   Client Email:', serviceAccount.client_email);
+  
+  // Test authentication by trying to access Firestore
+  console.log('🔍 Testing Firestore authentication...');
+  const testDb = admin.firestore();
+  // This will fail if credentials are invalid
+  await testDb.collection('_test').limit(1).get();
+  console.log('✅ Firestore authentication verified');
+  
 } catch (error) {
-  console.error('❌ Failed to initialize Firebase Admin:', error.message);
+  console.error('❌ Failed to initialize/verify Firebase Admin:', error.message);
+  console.error('   Error code:', error.code);
   console.error('   Service Account Source:', serviceAccountSource);
   if (serviceAccount) {
     console.error('   Has project_id:', !!serviceAccount.project_id);
@@ -82,27 +98,42 @@ try {
     console.error('   Has private_key:', !!serviceAccount.private_key);
     if (serviceAccount.private_key) {
       console.error('   Private key length:', serviceAccount.private_key.length);
-      console.error('   Private key starts with:', serviceAccount.private_key.substring(0, 30));
+      console.error('   Private key starts with:', serviceAccount.private_key.substring(0, 50));
+      console.error('   Private key has \\n:', serviceAccount.private_key.includes('\\n'));
+      console.error('   Private key has actual newlines:', serviceAccount.private_key.includes('\n'));
     }
   }
-  throw error;
+  
+  // Don't throw during initialization - let the app start and show errors in health check
+  console.error('⚠️ Continuing with limited functionality - Firebase operations will fail');
 }
 
-const db = admin.firestore();
+let db;
+try {
+  db = admin.firestore();
+} catch (error) {
+  console.error('❌ Failed to get Firestore instance:', error.message);
+  db = null;
+}
 
-// Test Firebase connection on startup
-(async () => {
-  try {
-    console.log('🔍 Testing Firebase connection...');
-    // Try a simple read to verify connection
-    const testRef = db.collection('_health').doc('test');
-    await testRef.get();
-    console.log('✅ Firebase connection verified');
-  } catch (error) {
-    console.error('❌ Firebase connection test failed:', error.message);
-    console.error('   This may cause issues with database operations');
-  }
-})();
+// Test Firebase connection on startup (only if db is available)
+if (db) {
+  (async () => {
+    try {
+      console.log('🔍 Testing Firebase connection...');
+      // Try a simple read to verify connection
+      const testRef = db.collection('_health').doc('test');
+      await testRef.get();
+      console.log('✅ Firebase connection verified');
+    } catch (error) {
+      console.error('❌ Firebase connection test failed:', error.message);
+      console.error('   Error code:', error.code);
+      console.error('   This may cause issues with database operations');
+    }
+  })();
+} else {
+  console.error('❌ Firestore not available - database operations will fail');
+}
 
 const app = express();
 
