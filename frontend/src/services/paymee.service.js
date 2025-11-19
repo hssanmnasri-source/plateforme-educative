@@ -1,37 +1,85 @@
-// 📁 frontend/src/services/paymee.service.js
-// ========================================
-
-import { collection, addDoc, doc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase.config';
 
 const PAYMEE_API = import.meta.env.VITE_PAYMEE_SANDBOX_URL || 'https://sandbox.paymee.tn/api/v2';
 const PAYMEE_TOKEN = import.meta.env.VITE_PAYMEE_TOKEN;
 const WEBHOOK_URL = import.meta.env.VITE_WEBHOOK_URL;
 
+// Get frontend base URL - must be HTTPS for Paymee
+const getBaseUrl = () => {
+  // Use environment variable if set (for production or ngrok)
+  const envUrl = import.meta.env.VITE_FRONTEND_URL;
+  if (envUrl) {
+    return envUrl.endsWith('/') ? envUrl.slice(0, -1) : envUrl;
+  }
+  
+  // In production, use window.location.origin
+  const origin = window.location.origin;
+  
+  // If already HTTPS, use it
+  if (origin.startsWith('https://')) {
+    return origin;
+  }
+  
+  // For localhost development, we need HTTPS (use ngrok or similar)
+  // This will throw an error to remind the user to set VITE_FRONTEND_URL
+  if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+    const errorMessage = `⚠️ Paymee nécessite HTTPS pour les callbacks de paiement.
+
+Pour développer en local, utilisez un service de tunnel:
+
+OPTION 1 - Cloudflare Tunnel (Recommandé, pas de compte ni mot de passe):
+1. Installez cloudflared: https://github.com/cloudflare/cloudflared/releases
+2. Exécutez: cloudflared tunnel --url http://localhost:5173
+3. Copiez l'URL HTTPS (ex: https://abc123.trycloudflare.com)
+4. Ajoutez dans frontend/.env: VITE_FRONTEND_URL=https://abc123.trycloudflare.com
+5. Redémarrez le serveur de développement
+
+OPTION 2 - Localtunnel (Peut demander un mot de passe):
+1. Exécutez: npx localtunnel --port 5173
+2. Copiez l'URL HTTPS (ex: https://abc123.loca.lt)
+3. Ajoutez dans frontend/.env: VITE_FRONTEND_URL=https://abc123.loca.lt
+4. Redémarrez le serveur de développement
+
+OPTION 3 - Ngrok (Nécessite un compte gratuit):
+1. Créez un compte: https://dashboard.ngrok.com/signup
+2. Configurez: ngrok config add-authtoken YOUR_TOKEN
+3. Exécutez: ngrok http 5173
+4. Copiez l'URL HTTPS et ajoutez-la à VITE_FRONTEND_URL
+
+Voir frontend/SETUP_HTTPS.md pour plus de détails.`;
+    console.error(errorMessage);
+    throw new Error('Configuration HTTPS requise: Paymee nécessite une URL HTTPS. Utilisez Cloudflare Tunnel (cloudflared tunnel --url http://localhost:5173) ou ngrok. Voir frontend/SETUP_HTTPS.md pour les instructions.');
+  }
+  
+  // Fallback: try to convert HTTP to HTTPS (may not work in all cases)
+  return origin.replace('http://', 'https://');
+};
+
 class PaymeeService {
   async initiatePayment(courseId, courseTitle, amount, userInfo) {
     try {
-      // Validation des données
-      if (!PAYMEE_TOKEN) {
-        throw new Error('Token Paymee manquant');
-      }
-      
-      if (!userInfo.email) {
-        throw new Error('Email utilisateur manquant');
+      console.log('🔐 Initiating payment...', { courseId, courseTitle, amount });
+
+      // Vérifier HTTPS AVANT de créer le document de paiement
+      // Get base URL (must be HTTPS) - vérifier d'abord
+      let baseUrl;
+      try {
+        baseUrl = getBaseUrl();
+      } catch (error) {
+        // Si l'erreur HTTPS est levée, retourner directement sans créer de document
+        console.error('❌ HTTPS check failed:', error.message);
+        return {
+          success: false,
+          error: error.message
+        };
       }
 
-      if (!amount || amount <= 0) {
-        throw new Error('Montant invalide');
-      }
-
-      if (!courseId || !courseTitle) {
-        throw new Error('Informations du cours manquantes');
-      }
-
-      // 1. Créer une transaction en attente dans Firestore
+      // 1. Créer transaction pending (uniquement si HTTPS est OK)
       const paymentRef = await addDoc(collection(db, 'payments'), {
         userId: userInfo.uid,
         courseId: courseId,
+        courseTitle: courseTitle,
         amount: amount,
         currency: 'TND',
         status: 'pending',
@@ -40,54 +88,35 @@ class PaymeeService {
         userName: userInfo.displayName
       });
 
+      console.log('✅ Payment document created:', paymentRef.id);
+
       // Préparer les données pour Paymee
       const firstName = userInfo.displayName?.split(' ')[0] || 'User';
-      const lastName = userInfo.displayName?.split(' ').slice(1).join(' ') || 'User';
-      const phone = userInfo.phone || '00000000';
+      const lastName = userInfo.displayName?.split(' ').slice(1).join(' ') || 'Student';
       
-      // S'assurer que le téléphone est au bon format (8 chiffres)
-      const cleanPhone = phone.replace(/\D/g, '').slice(-8);
-      const formattedPhone = cleanPhone.length === 8 ? cleanPhone : '00000000';
-
+      // Nettoyer le numéro de téléphone (8 chiffres pour Tunisie)
+      let phone = userInfo.phone || '12345678';
+      phone = phone.replace(/\D/g, ''); // Supprimer tout sauf les chiffres
+      if (phone.length !== 8) {
+        phone = '12345678'; // Fallback
+      }
+      
       const paymentData = {
-        amount: parseFloat(amount),
-        note: `Achat cours: ${courseTitle}`,
+        amount: parseFloat(amount), // S'assurer que c'est un nombre
+        note: `Cours ${courseTitle}`, // PAS de guillemets
         first_name: firstName,
         last_name: lastName,
         email: userInfo.email,
-        phone: formattedPhone,
-        return_url: `${window.location.origin}/payment/success?payment_id=${paymentRef.id}`,
-        cancel_url: `${window.location.origin}/payment/cancel?payment_id=${paymentRef.id}`,
+        phone: phone, // Format: 12345678 (8 chiffres)
+        return_url: `${baseUrl}/payment/success?payment_id=${paymentRef.id}`,
+        cancel_url: `${baseUrl}/payment/cancel?payment_id=${paymentRef.id}`,
+        webhook_url: `${WEBHOOK_URL}/paymee-webhook`,
         order_id: paymentRef.id
       };
 
-      // Validation supplémentaire des données
-      if (isNaN(paymentData.amount)) {
-        throw new Error('Le montant doit être un nombre valide');
-      }
+      console.log('📤 Sending to Paymee:', paymentData);
 
-      if (!paymentData.email || !paymentData.email.includes('@')) {
-        throw new Error('Email invalide');
-      }
-
-      if (paymentData.first_name.length < 2) {
-        throw new Error('Prénom trop court');
-      }
-
-      if (paymentData.last_name.length < 2) {
-        throw new Error('Nom trop court');
-      }
-
-      // Ajouter webhook_url seulement si défini
-      if (WEBHOOK_URL) {
-        paymentData.webhook_url = `${WEBHOOK_URL}/paymee-webhook`;
-      }
-
-      console.log('Sending payment data to Paymee:', paymentData);
-      console.log('API URL:', `${PAYMEE_API}/payments/create`);
-      console.log('Token exists:', !!PAYMEE_TOKEN);
-
-      // 2. Appeler l'API Paymee
+      // 2. Appeler API Paymee
       const response = await fetch(`${PAYMEE_API}/payments/create`, {
         method: 'POST',
         headers: {
@@ -97,37 +126,37 @@ class PaymeeService {
         body: JSON.stringify(paymentData)
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      console.log('📥 Response status:', response.status);
 
       const data = await response.json();
-      console.log('Paymee response:', data);
-
-      if (!response.ok) {
-        console.error('API Error Details:', {
-          status: response.status,
-          statusText: response.statusText,
-          data: data
-        });
-        throw new Error(`HTTP ${response.status}: ${data.message || data.error || 'Erreur API Paymee'}`);
-      }
+      console.log('📥 Paymee response:', data);
 
       if (!data.status) {
-        console.error('Paymee API returned error:', data);
-        if (data.errors && data.errors.length > 0) {
-          console.error('Specific errors:', data.errors);
-          const errorMessages = data.errors.map(err => err.message || err.field || err).join(', ');
-          throw new Error(`Erreurs Paymee: ${errorMessages}`);
+        console.error('❌ Paymee error:', data);
+        
+        // Afficher les erreurs spécifiques
+        if (data.errors && Array.isArray(data.errors)) {
+          const errorMessages = data.errors.map(err => {
+            if (typeof err === 'object') {
+              return Object.entries(err).map(([key, value]) => `${key}: ${value}`).join(', ');
+            }
+            return err;
+          }).join(' | ');
+          
+          throw new Error(`Erreur Paymee: ${errorMessages}`);
         }
-        throw new Error(data.message || data.error || 'Erreur lors de l\'initialisation du paiement');
+        
+        throw new Error(data.message || 'Erreur initialisation paiement');
       }
 
-      // 3. Mettre à jour avec le token Paymee
+      // 3. Sauvegarder token
       await updateDoc(doc(db, 'payments', paymentRef.id), {
         paymeeToken: data.data.token,
         paymentUrl: data.data.payment_url,
         updatedAt: serverTimestamp()
       });
+
+      console.log('✅ Payment ready:', data.data.payment_url);
 
       return {
         success: true,
@@ -137,17 +166,16 @@ class PaymeeService {
       };
 
     } catch (error) {
-      console.error('Payment initiation error:', error);
-      return {
-        success: false,
-        error: error.message
+      console.error('💥 Payment error:', error);
+      return { 
+        success: false, 
+        error: error.message 
       };
     }
   }
 
   async verifyPayment(paymentId) {
     try {
-      // Vérifier le statut dans Firestore
       const paymentDoc = await getDoc(doc(db, 'payments', paymentId));
       
       if (!paymentDoc.exists()) {
@@ -162,11 +190,10 @@ class PaymeeService {
         data: paymentData
       };
     } catch (error) {
-      console.error('Payment verification error:', error);
+      console.error('Verification error:', error);
       return { success: false, error: error.message };
     }
   }
 }
 
 export default new PaymeeService();
-//28.10.2025 21H

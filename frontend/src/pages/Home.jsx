@@ -4,6 +4,7 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { BookOpen, Users, Award, ArrowRight } from 'lucide-react';
+import NotificationPrompt from '../components/common/NotificationPrompt';
 
 export default function Home() {
   const { currentUser, userProfile } = useAuth();
@@ -122,6 +123,8 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      <NotificationPrompt />
     </div>
   );
 }

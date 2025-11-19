@@ -6,6 +6,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../config/firebase.config';
 import authService from '../services/auth.service';
+import notificationService from '../services/notification.service';
 
 const AuthContext = createContext({});
 
@@ -42,6 +43,18 @@ export const AuthProvider = ({ children }) => {
       
       if (user) {
         await loadUserProfile(user.uid);
+
+        // 🔔 Activer les notifications
+        await notificationService.initialize();
+        const result = await notificationService.subscribeToNotifications(user.uid);
+        if (result.success) {
+          console.log('✅ Notifications activées');
+        }
+
+        notificationService.onMessageReceived((payload) => {
+          console.log('📨 Nouvelle notification:', payload);
+          // TODO: Ajouter un toast si nécessaire
+        });
       } else {
         setUserProfile(null);
       }

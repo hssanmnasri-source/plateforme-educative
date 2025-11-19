@@ -11,6 +11,15 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    open: true
+    open: true,
+    host: true, // Allow external connections
+    allowedHosts: [
+      'localhost',
+      '.ngrok.io',
+      '.ngrok-free.app',
+      '.ngrok-free.dev',
+      '.trycloudflare.com',
+      '.loca.lt'
+    ]
   }
 })

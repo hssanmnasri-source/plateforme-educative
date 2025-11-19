@@ -8,14 +8,19 @@ import ForgotPassword from './pages/ForgotPassword';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
 import Courses from './pages/Courses';
+import CourseDetail from './pages/CourseDetail';  // NOUVEAU
 import MyCourses from './pages/MyCourses';
-
-import PaymentSuccess from './pages/PaymentSuccess';  
-import PaymentCancel from './pages/PaymentCancel';    
+import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentCancel from './pages/PaymentCancel';
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true
+      }}
+    >
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -24,8 +29,9 @@ function App() {
           
           <Route path="/" element={<Home />} />
           <Route path="/courses" element={<Courses />} />
+          <Route path="/courses/:id" element={<CourseDetail />} />  {/* NOUVEAU */}
 
-          {/* Routes de paiement */}
+          {/* Paiement */}
           <Route path="/payment/success" element={<PaymentSuccess />} />
           <Route path="/payment/cancel" element={<PaymentCancel />} />
 

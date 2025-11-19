@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import crypto from 'crypto';
 import admin from 'firebase-admin';
 import { readFileSync } from 'fs';
+import notificationService from './src/services/notification.service.js';
 
 dotenv.config();
 
@@ -24,7 +25,11 @@ const db = admin.firestore();
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: '*', // Autoriser toutes les origines (nécessaire pour les webhooks Paymee)
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -50,6 +55,24 @@ function verifyPaymeeChecksum(token, paymentStatus, apiToken) {
 // ========================================
 // WEBHOOK PAYMEE
 // ========================================
+// Route GET pour tester que l'endpoint est accessible
+app.get('/paymee-webhook', (req, res) => {
+  res.json({
+    message: 'Paymee Webhook endpoint is active',
+    method: 'Use POST to receive webhooks from Paymee',
+    endpoint: '/paymee-webhook',
+    note: 'This endpoint accepts POST requests with payment status updates'
+  });
+});
+
+// Route OPTIONS pour CORS preflight
+app.options('/paymee-webhook', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.sendStatus(200);
+});
+
 app.post('/paymee-webhook', async (req, res) => {
   try {
     console.log('📥 Webhook Paymee reçu:', JSON.stringify(req.body, null, 2));
@@ -108,6 +131,8 @@ app.post('/paymee-webhook', async (req, res) => {
 
       // 2. Ajouter le cours à l'utilisateur
       const userRef = db.collection('users').doc(paymentData.userId);
+      const userSnapshot = await userRef.get();
+
       await userRef.update({
         purchasedCourses: admin.firestore.FieldValue.arrayUnion(paymentData.courseId)
       });
@@ -116,6 +141,17 @@ app.post('/paymee-webhook', async (req, res) => {
       const courseRef = db.collection('courses').doc(paymentData.courseId);
       await courseRef.update({
         enrolledCount: admin.firestore.FieldValue.increment(1)
+      });
+
+      await notificationService.sendToUser(paymentData.userId, {
+        title: '🎉 Paiement confirmé !',
+        body: `Vous avez maintenant accès à votre cours.`,
+        icon: '/logo.png',
+        data: {
+          type: 'payment_success',
+          courseId: paymentData.courseId,
+          paymentId: order_id
+        }
       });
 
       console.log('✅ Paiement traité avec succès');
@@ -188,6 +224,173 @@ app.post('/test-webhook', async (req, res) => {
     console.log('🧪 Test webhook:', testData);
     res.json({ success: true, testData });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/test-notification', async (req, res) => {
+  try {
+    const { userId, title, body } = req.body;
+    const result = await notificationService.sendToUser(userId, {
+      title: title || 'Notification de test',
+      body: body || 'Ceci est un test depuis le backend'
+    });
+    res.json({ success: true, result });
+  } catch (error) {
+    console.error('Erreur test notification:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========================================
+// Route pour synchroniser un paiement (appelée depuis le frontend si webhook manqué)
+// ========================================
+// Route OPTIONS pour CORS preflight
+app.options('/sync-payment', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.sendStatus(200);
+});
+
+app.post('/sync-payment', async (req, res) => {
+  try {
+    const { paymentId } = req.body;
+
+    if (!paymentId) {
+      return res.status(400).json({ error: 'paymentId requis' });
+    }
+
+    console.log('🔄 Synchronisation du paiement:', paymentId);
+
+    const paymentRef = db.collection('payments').doc(paymentId);
+    const paymentDoc = await paymentRef.get();
+
+    if (!paymentDoc.exists) {
+      return res.status(404).json({ error: 'Paiement introuvable' });
+    }
+
+    const paymentData = paymentDoc.data();
+
+    // Si déjà complété, ne rien faire
+    if (paymentData.status === 'completed') {
+      return res.json({ success: true, message: 'Paiement déjà complété' });
+    }
+
+    // Mettre à jour le paiement
+    await paymentRef.update({
+      status: 'completed',
+      completedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      synced: true // Marquer comme synchronisé manuellement
+    });
+
+    // Ajouter le cours à l'utilisateur
+    const userRef = db.collection('users').doc(paymentData.userId);
+    await userRef.update({
+      purchasedCourses: admin.firestore.FieldValue.arrayUnion(paymentData.courseId)
+    });
+
+    // Incrémenter le compteur d'inscriptions
+    const courseRef = db.collection('courses').doc(paymentData.courseId);
+    await courseRef.update({
+      enrolledCount: admin.firestore.FieldValue.increment(1)
+    });
+
+    // Envoyer notification
+    const userSnapshot = await userRef.get();
+    const userData = userSnapshot.exists ? userSnapshot.data() : {};
+    
+    await notificationService.sendToUser(paymentData.userId, {
+      title: '🎉 Paiement confirmé !',
+      body: `Vous avez maintenant accès à votre cours.`,
+      icon: '/logo.png',
+      data: {
+        type: 'payment_success',
+        courseId: paymentData.courseId,
+        paymentId: paymentId
+      }
+    });
+
+    console.log('✅ Paiement synchronisé avec succès');
+
+    res.json({ 
+      success: true, 
+      message: 'Paiement synchronisé',
+      paymentId 
+    });
+  } catch (error) {
+    console.error('💥 Erreur synchronisation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========================================
+// Route pour marquer manuellement un paiement comme complété (pour tests)
+// ========================================
+app.post('/complete-payment', async (req, res) => {
+  try {
+    const { paymentId } = req.body;
+
+    if (!paymentId) {
+      return res.status(400).json({ error: 'paymentId requis' });
+    }
+
+    console.log('🔄 Marquage manuel du paiement comme complété:', paymentId);
+
+    const paymentRef = db.collection('payments').doc(paymentId);
+    const paymentDoc = await paymentRef.get();
+
+    if (!paymentDoc.exists) {
+      return res.status(404).json({ error: 'Paiement introuvable' });
+    }
+
+    const paymentData = paymentDoc.data();
+
+    // Mettre à jour le paiement
+    await paymentRef.update({
+      status: 'completed',
+      completedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      manualCompletion: true // Marquer comme complété manuellement
+    });
+
+    // Ajouter le cours à l'utilisateur
+    const userRef = db.collection('users').doc(paymentData.userId);
+    await userRef.update({
+      purchasedCourses: admin.firestore.FieldValue.arrayUnion(paymentData.courseId)
+    });
+
+    // Incrémenter le compteur d'inscriptions
+    const courseRef = db.collection('courses').doc(paymentData.courseId);
+    await courseRef.update({
+      enrolledCount: admin.firestore.FieldValue.increment(1)
+    });
+
+    // Envoyer notification
+    const userSnapshot = await userRef.get();
+    const userData = userSnapshot.exists ? userSnapshot.data() : {};
+    
+    await notificationService.sendToUser(paymentData.userId, {
+      title: '🎉 Paiement confirmé !',
+      body: `Vous avez maintenant accès à votre cours.`,
+      icon: '/logo.png',
+      data: {
+        type: 'payment_success',
+        courseId: paymentData.courseId,
+        paymentId: paymentId
+      }
+    });
+
+    console.log('✅ Paiement marqué comme complété manuellement');
+
+    res.json({ 
+      success: true, 
+      message: 'Paiement marqué comme complété',
+      paymentId 
+    });
+  } catch (error) {
+    console.error('💥 Erreur completion manuelle:', error);
     res.status(500).json({ error: error.message });
   }
 });
