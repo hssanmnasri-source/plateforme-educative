@@ -81,13 +81,6 @@ try {
   console.log('   Project:', serviceAccount.project_id);
   console.log('   Client Email:', serviceAccount.client_email);
   
-  // Test authentication by trying to access Firestore
-  console.log('🔍 Testing Firestore authentication...');
-  const testDb = admin.firestore();
-  // This will fail if credentials are invalid
-  await testDb.collection('_test').limit(1).get();
-  console.log('✅ Firestore authentication verified');
-  
 } catch (error) {
   console.error('❌ Failed to initialize/verify Firebase Admin:', error.message);
   console.error('   Error code:', error.code);
