@@ -279,6 +279,12 @@ app.options('/sync-payment', (req, res) => {
 
 app.post('/sync-payment', async (req, res) => {
   try {
+    // Vérifier que Firebase est initialisé
+    if (!db) {
+      console.error('❌ Firebase Firestore non initialisé');
+      return res.status(500).json({ error: 'Database not initialized' });
+    }
+
     const { paymentId } = req.body;
 
     if (!paymentId) {
@@ -291,16 +297,35 @@ app.post('/sync-payment', async (req, res) => {
     const paymentDoc = await paymentRef.get();
 
     if (!paymentDoc.exists) {
+      console.error('❌ Paiement introuvable:', paymentId);
       return res.status(404).json({ error: 'Paiement introuvable' });
     }
 
     const paymentData = paymentDoc.data();
+    console.log('📄 Données du paiement:', { 
+      status: paymentData.status, 
+      userId: paymentData.userId, 
+      courseId: paymentData.courseId 
+    });
+
+    // Vérifier que les données nécessaires sont présentes
+    if (!paymentData.userId) {
+      console.error('❌ userId manquant dans les données du paiement');
+      return res.status(400).json({ error: 'Données de paiement incomplètes: userId manquant' });
+    }
+
+    if (!paymentData.courseId) {
+      console.error('❌ courseId manquant dans les données du paiement');
+      return res.status(400).json({ error: 'Données de paiement incomplètes: courseId manquant' });
+    }
 
     // Si déjà complété, ne rien faire
     if (paymentData.status === 'completed') {
+      console.log('✅ Paiement déjà complété');
       return res.json({ success: true, message: 'Paiement déjà complété' });
     }
 
+    console.log('📝 Mise à jour du statut du paiement...');
     // Mettre à jour le paiement
     await paymentRef.update({
       status: 'completed',
@@ -309,32 +334,38 @@ app.post('/sync-payment', async (req, res) => {
       synced: true // Marquer comme synchronisé manuellement
     });
 
+    console.log('👤 Ajout du cours à l\'utilisateur...');
     // Ajouter le cours à l'utilisateur
     const userRef = db.collection('users').doc(paymentData.userId);
     await userRef.update({
       purchasedCourses: admin.firestore.FieldValue.arrayUnion(paymentData.courseId)
     });
 
+    console.log('📚 Incrémentation du compteur d\'inscriptions...');
     // Incrémenter le compteur d'inscriptions
     const courseRef = db.collection('courses').doc(paymentData.courseId);
     await courseRef.update({
       enrolledCount: admin.firestore.FieldValue.increment(1)
     });
 
-    // Envoyer notification
-    const userSnapshot = await userRef.get();
-    const userData = userSnapshot.exists ? userSnapshot.data() : {};
-    
-    await notificationService.sendToUser(paymentData.userId, {
-      title: '🎉 Paiement confirmé !',
-      body: `Vous avez maintenant accès à votre cours.`,
-      icon: '/logo.png',
-      data: {
-        type: 'payment_success',
-        courseId: paymentData.courseId,
-        paymentId: paymentId
-      }
-    });
+    console.log('🔔 Envoi de la notification...');
+    // Envoyer notification (ne pas bloquer si ça échoue)
+    try {
+      await notificationService.sendToUser(paymentData.userId, {
+        title: '🎉 Paiement confirmé !',
+        body: `Vous avez maintenant accès à votre cours.`,
+        icon: '/logo.png',
+        data: {
+          type: 'payment_success',
+          courseId: paymentData.courseId,
+          paymentId: paymentId
+        }
+      });
+      console.log('✅ Notification envoyée');
+    } catch (notifError) {
+      console.warn('⚠️ Erreur lors de l\'envoi de la notification (non bloquant):', notifError.message);
+      // Ne pas bloquer le processus si la notification échoue
+    }
 
     console.log('✅ Paiement synchronisé avec succès');
 
@@ -345,10 +376,11 @@ app.post('/sync-payment', async (req, res) => {
     });
   } catch (error) {
     console.error('💥 Erreur synchronisation:', error);
-    console.error('Stack trace:', error.stack);
+    console.error('   Message:', error.message);
+    console.error('   Stack:', error.stack);
     res.status(500).json({ 
-      error: error.message,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      error: error.message || 'Erreur lors de la synchronisation',
+      type: error.name || 'UnknownError'
     });
   }
 });
