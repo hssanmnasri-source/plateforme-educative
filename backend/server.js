@@ -57,12 +57,34 @@ try {
 }
 
 try {
+  // Verify service account structure before initializing
+  if (!serviceAccount.project_id || !serviceAccount.client_email || !serviceAccount.private_key) {
+    throw new Error('Service account missing required fields: project_id, client_email, or private_key');
+  }
+  
+  // Check if private key looks valid
+  if (!serviceAccount.private_key.includes('BEGIN PRIVATE KEY') || !serviceAccount.private_key.includes('END PRIVATE KEY')) {
+    throw new Error('Private key format appears invalid - missing BEGIN/END markers');
+  }
+  
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
   });
   console.log('✅ Firebase Admin initialized successfully');
+  console.log('   Project:', serviceAccount.project_id);
+  console.log('   Client Email:', serviceAccount.client_email);
 } catch (error) {
   console.error('❌ Failed to initialize Firebase Admin:', error.message);
+  console.error('   Service Account Source:', serviceAccountSource);
+  if (serviceAccount) {
+    console.error('   Has project_id:', !!serviceAccount.project_id);
+    console.error('   Has client_email:', !!serviceAccount.client_email);
+    console.error('   Has private_key:', !!serviceAccount.private_key);
+    if (serviceAccount.private_key) {
+      console.error('   Private key length:', serviceAccount.private_key.length);
+      console.error('   Private key starts with:', serviceAccount.private_key.substring(0, 30));
+    }
+  }
   throw error;
 }
 
@@ -290,14 +312,30 @@ app.get('/health', async (req, res) => {
 
 // Diagnostic endpoint to check Firebase config (without sensitive data)
 app.get('/diagnostics', (req, res) => {
+  const envVar = process.env.FIREBASE_SERVICE_ACCOUNT || '';
+  let parseError = null;
+  let parsedData = null;
+  
+  if (envVar) {
+    try {
+      parsedData = JSON.parse(envVar);
+    } catch (e) {
+      parseError = e.message;
+    }
+  }
+  
   res.json({
     hasFirebaseEnvVar: !!process.env.FIREBASE_SERVICE_ACCOUNT,
-    envVarLength: process.env.FIREBASE_SERVICE_ACCOUNT?.length || 0,
-    envVarPreview: process.env.FIREBASE_SERVICE_ACCOUNT?.substring(0, 50) + '...' || 'not set',
+    envVarLength: envVar.length,
+    envVarFirstChars: envVar.substring(0, 100),
+    envVarLastChars: envVar.substring(envVar.length - 50),
+    parseError: parseError,
     source: serviceAccountSource,
-    projectId: serviceAccount?.project_id || 'unknown',
-    clientEmail: serviceAccount?.client_email || 'unknown',
-    hasPrivateKey: !!serviceAccount?.private_key
+    projectId: serviceAccount?.project_id || parsedData?.project_id || 'unknown',
+    clientEmail: serviceAccount?.client_email || parsedData?.client_email || 'unknown',
+    hasPrivateKey: !!(serviceAccount?.private_key || parsedData?.private_key),
+    privateKeyStarts: serviceAccount?.private_key?.substring(0, 30) || parsedData?.private_key?.substring(0, 30) || 'none',
+    hasAllRequiredFields: !!(serviceAccount?.project_id && serviceAccount?.client_email && serviceAccount?.private_key)
   });
 });
 
