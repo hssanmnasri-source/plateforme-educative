@@ -111,6 +111,7 @@ try {
 let db;
 try {
   db = admin.firestore();
+  console.log('✅ Firestore instance created');
 } catch (error) {
   console.error('❌ Failed to get Firestore instance:', error.message);
   db = null;
@@ -121,13 +122,19 @@ if (db) {
   (async () => {
     try {
       console.log('🔍 Testing Firebase connection...');
-      // Try a simple read to verify connection
+      // Try a simple read to verify connection and authentication
       const testRef = db.collection('_health').doc('test');
       await testRef.get();
-      console.log('✅ Firebase connection verified');
+      console.log('✅ Firebase connection and authentication verified');
     } catch (error) {
       console.error('❌ Firebase connection test failed:', error.message);
       console.error('   Error code:', error.code);
+      console.error('   Error details:', error.details);
+      if (error.code === 16 || error.message.includes('UNAUTHENTICATED')) {
+        console.error('   ⚠️ Authentication failed - check service account key validity and permissions');
+        console.error('   ⚠️ Service account email:', serviceAccount?.client_email);
+        console.error('   ⚠️ Make sure the service account has "Firebase Admin SDK Administrator Service Agent" role');
+      }
       console.error('   This may cause issues with database operations');
     }
   })();
