@@ -42,6 +42,21 @@ try {
 }
 
 const db = admin.firestore();
+
+// Test Firebase connection on startup
+(async () => {
+  try {
+    console.log('🔍 Testing Firebase connection...');
+    // Try a simple read to verify connection
+    const testRef = db.collection('_health').doc('test');
+    await testRef.get();
+    console.log('✅ Firebase connection verified');
+  } catch (error) {
+    console.error('❌ Firebase connection test failed:', error.message);
+    console.error('   This may cause issues with database operations');
+  }
+})();
+
 const app = express();
 
 // Middleware
@@ -221,12 +236,27 @@ app.get('/', (req, res) => {
 // ========================================
 // Route de test (vérifier que le serveur fonctionne)
 // ========================================
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    service: 'Paymee Webhook Server'
-  });
+app.get('/health', async (req, res) => {
+  try {
+    // Test Firebase connection
+    const testRef = db.collection('_health').doc('test');
+    await testRef.get();
+    
+    res.json({
+      status: 'OK',
+      timestamp: new Date().toISOString(),
+      service: 'Paymee Webhook Server',
+      firebase: 'connected'
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      timestamp: new Date().toISOString(),
+      service: 'Paymee Webhook Server',
+      firebase: 'disconnected',
+      error: error.message
+    });
+  }
 });
 
 // ========================================
