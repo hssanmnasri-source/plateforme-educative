@@ -13,21 +13,46 @@ dotenv.config();
 
 // Initialize Firebase Admin
 let serviceAccount;
+let serviceAccountSource = 'unknown';
 try {
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    console.log('✅ Firebase Service Account loaded from environment variable');
+    try {
+      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      serviceAccountSource = 'environment variable';
+      console.log('✅ Firebase Service Account loaded from environment variable');
+      console.log('   Project ID:', serviceAccount.project_id);
+      console.log('   Client Email:', serviceAccount.client_email);
+    } catch (parseError) {
+      console.error('❌ Failed to parse FIREBASE_SERVICE_ACCOUNT from environment variable');
+      console.error('   Error:', parseError.message);
+      console.error('   First 100 chars:', process.env.FIREBASE_SERVICE_ACCOUNT?.substring(0, 100));
+      throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is not valid JSON: ' + parseError.message);
+    }
   } else {
     try {
       serviceAccount = JSON.parse(readFileSync('./education-platform-backend-firebase-adminsdk-fbsvc-055e9861b5.json', 'utf8'));
+      serviceAccountSource = 'file';
       console.log('✅ Firebase Service Account loaded from file');
+      console.log('   Project ID:', serviceAccount.project_id);
     } catch (fileError) {
       console.error('❌ Failed to load Firebase Service Account from file:', fileError.message);
       throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable or service account file is required');
     }
   }
+  
+  // Validate required fields
+  if (!serviceAccount.project_id) {
+    throw new Error('Service account missing project_id');
+  }
+  if (!serviceAccount.client_email) {
+    throw new Error('Service account missing client_email');
+  }
+  if (!serviceAccount.private_key) {
+    throw new Error('Service account missing private_key');
+  }
+  
 } catch (error) {
-  console.error('❌ Failed to parse Firebase Service Account:', error.message);
+  console.error('❌ Failed to load Firebase Service Account:', error.message);
   throw error;
 }
 
@@ -246,7 +271,8 @@ app.get('/health', async (req, res) => {
       status: 'OK',
       timestamp: new Date().toISOString(),
       service: 'Paymee Webhook Server',
-      firebase: 'connected'
+      firebase: 'connected',
+      source: serviceAccountSource
     });
   } catch (error) {
     res.status(500).json({
@@ -254,9 +280,25 @@ app.get('/health', async (req, res) => {
       timestamp: new Date().toISOString(),
       service: 'Paymee Webhook Server',
       firebase: 'disconnected',
-      error: error.message
+      error: error.message,
+      source: serviceAccountSource,
+      hasEnvVar: !!process.env.FIREBASE_SERVICE_ACCOUNT,
+      envVarLength: process.env.FIREBASE_SERVICE_ACCOUNT?.length || 0
     });
   }
+});
+
+// Diagnostic endpoint to check Firebase config (without sensitive data)
+app.get('/diagnostics', (req, res) => {
+  res.json({
+    hasFirebaseEnvVar: !!process.env.FIREBASE_SERVICE_ACCOUNT,
+    envVarLength: process.env.FIREBASE_SERVICE_ACCOUNT?.length || 0,
+    envVarPreview: process.env.FIREBASE_SERVICE_ACCOUNT?.substring(0, 50) + '...' || 'not set',
+    source: serviceAccountSource,
+    projectId: serviceAccount?.project_id || 'unknown',
+    clientEmail: serviceAccount?.client_email || 'unknown',
+    hasPrivateKey: !!serviceAccount?.private_key
+  });
 });
 
 // ========================================
