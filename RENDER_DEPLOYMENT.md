@@ -14,9 +14,9 @@
 - **Environment**: `Node`
 - **Region**: Choose closest to you
 - **Branch**: `main`
-- **Root Directory**: Leave empty (or set to `backend` if you want)
-- **Build Command**: `cd backend && npm install`
-- **Start Command**: `cd backend && node server.js`
+- **Root Directory**: `backend` ⚠️ **IMPORTANT: Set this to `backend`**
+- **Build Command**: `npm install`
+- **Start Command**: `node server.js`
 - **Plan**: **Free** (perfect for testing!)
 
 ## Step 4: Set Environment Variables
