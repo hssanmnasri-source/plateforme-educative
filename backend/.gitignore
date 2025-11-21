@@ -1,4 +1,9 @@
-echo node_modules/ > .gitignore
-echo .env >> .gitignore
-echo serviceAccountKey.json >> .gitignore
-echo *.log >> .gitignore
+node_modules/
+.env
+.env.local
+serviceAccountKey.json
+*.log
+
+# Ignore local Firebase service account files (do not commit keys)
+education-platform-backend-firebase-adminsdk-*.json
+serviceAccountKey.json

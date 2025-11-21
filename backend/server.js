@@ -15,6 +15,7 @@ dotenv.config();
 let serviceAccount;
 let serviceAccountSource = 'unknown';
 try {
+  // Prefer a complete JSON string in FIREBASE_SERVICE_ACCOUNT
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     try {
       serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
@@ -23,23 +24,27 @@ try {
       console.log('   Project ID:', serviceAccount.project_id);
       console.log('   Client Email:', serviceAccount.client_email);
     } catch (parseError) {
-      console.error('❌ Failed to parse FIREBASE_SERVICE_ACCOUNT from environment variable');
-      console.error('   Error:', parseError.message);
-      console.error('   First 100 chars:', process.env.FIREBASE_SERVICE_ACCOUNT?.substring(0, 100));
+      console.error('❌ Failed to parse FIREBASE_SERVICE_ACCOUNT from environment variable:', parseError.message);
       throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is not valid JSON: ' + parseError.message);
     }
-  } else {
+  } else if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
+    // If a path is explicitly provided (outside repo), allow reading from it
     try {
-      serviceAccount = JSON.parse(readFileSync('./education-platform-backend-firebase-adminsdk-fbsvc-055e9861b5.json', 'utf8'));
-      serviceAccountSource = 'file';
-      console.log('✅ Firebase Service Account loaded from file');
+      const path = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+      serviceAccount = JSON.parse(readFileSync(path, 'utf8'));
+      serviceAccountSource = `file (${path})`;
+      console.log('✅ Firebase Service Account loaded from path specified in FIREBASE_SERVICE_ACCOUNT_PATH');
       console.log('   Project ID:', serviceAccount.project_id);
+      console.log('   Client Email:', serviceAccount.client_email);
     } catch (fileError) {
-      console.error('❌ Failed to load Firebase Service Account from file:', fileError.message);
-      throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable or service account file is required');
+      console.error('❌ Failed to load Firebase Service Account from path in FIREBASE_SERVICE_ACCOUNT_PATH:', fileError.message);
+      throw new Error('Failed to read service account from FIREBASE_SERVICE_ACCOUNT_PATH: ' + fileError.message);
     }
+  } else {
+    // Don't read service-account files from the repository by default (sensitive)
+    throw new Error('No Firebase service account configured. Set FIREBASE_SERVICE_ACCOUNT (JSON) or FIREBASE_SERVICE_ACCOUNT_PATH (secure file path).');
   }
-  
+
   // Validate required fields
   if (!serviceAccount.project_id) {
     throw new Error('Service account missing project_id');
@@ -50,7 +55,7 @@ try {
   if (!serviceAccount.private_key) {
     throw new Error('Service account missing private_key');
   }
-  
+
 } catch (error) {
   console.error('❌ Failed to load Firebase Service Account:', error.message);
   throw error;
@@ -62,18 +67,11 @@ try {
     throw new Error('Service account missing required fields: project_id, client_email, or private_key');
   }
   
-  // Check if private key looks valid
+  // Check if private key looks valid (basic checks only)
   if (!serviceAccount.private_key.includes('BEGIN PRIVATE KEY') || !serviceAccount.private_key.includes('END PRIVATE KEY')) {
     throw new Error('Private key format appears invalid - missing BEGIN/END markers');
   }
-  
-  // Check if private key has proper newlines (should have \n, not actual newlines)
-  const hasNewlines = serviceAccount.private_key.includes('\n');
-  const hasEscapedNewlines = serviceAccount.private_key.includes('\\n');
-  if (!hasNewlines && !hasEscapedNewlines) {
-    console.warn('⚠️ Private key might be missing newline characters');
-  }
-  
+
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
   });
@@ -89,14 +87,8 @@ try {
     console.error('   Has project_id:', !!serviceAccount.project_id);
     console.error('   Has client_email:', !!serviceAccount.client_email);
     console.error('   Has private_key:', !!serviceAccount.private_key);
-    if (serviceAccount.private_key) {
-      console.error('   Private key length:', serviceAccount.private_key.length);
-      console.error('   Private key starts with:', serviceAccount.private_key.substring(0, 50));
-      console.error('   Private key has \\n:', serviceAccount.private_key.includes('\\n'));
-      console.error('   Private key has actual newlines:', serviceAccount.private_key.includes('\n'));
-    }
   }
-  
+
   // Don't throw during initialization - let the app start and show errors in health check
   console.error('⚠️ Continuing with limited functionality - Firebase operations will fail');
 }
@@ -155,13 +147,22 @@ app.use((req, res, next) => {
 // ========================================
 // Fonction de vérification de signature Paymee
 // ========================================
+function normalizePaymeeStatus(value) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value === 1;
+  if (!value) return false;
+  const s = String(value).trim().toLowerCase();
+  const truthy = new Set(['1', 'true', 'yes', 'paid', 'success', 'ok', 'completed']);
+  return truthy.has(s);
+}
+
 function verifyPaymeeChecksum(token, paymentStatus, apiToken) {
-  const status = paymentStatus ? '1' : '0';
+  const status = normalizePaymeeStatus(paymentStatus) ? '1' : '0';
   const expectedChecksum = crypto
     .createHash('md5')
     .update(token + status + apiToken)
     .digest('hex');
-  
+
   return expectedChecksum;
 }
 
@@ -234,7 +235,11 @@ app.post('/paymee-webhook', async (req, res) => {
       const paymentData = paymentDoc.data();
       console.log('📄 Paiement trouvé:', paymentData);
 
+<<<<<<< HEAD
       if (payment_status === true) {
+=======
+      if (normalizePaymeeStatus(payment_status)) {
+>>>>>>> d579dbf (chore(backend): harden Firebase loading, normalize Paymee status, and ignore service-account files)
         console.log('💰 Paiement réussi - Mise à jour...');
 
         // 1. Mettre à jour le paiement
@@ -276,7 +281,11 @@ app.post('/paymee-webhook', async (req, res) => {
         console.log(`   - Frais: ${cost} TND`);
 
       } else {
+<<<<<<< HEAD
         console.log('❌ Paiement échoué');
+=======
+        console.log('❌ Paiement échoué - Status reçu:', payment_status, 'Type:', typeof payment_status);
+>>>>>>> d579dbf (chore(backend): harden Firebase loading, normalize Paymee status, and ignore service-account files)
 
         // Mettre à jour le statut à "failed"
         await paymentRef.update({

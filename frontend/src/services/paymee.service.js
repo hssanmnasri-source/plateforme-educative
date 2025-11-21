@@ -5,6 +5,20 @@ const PAYMEE_API = import.meta.env.VITE_PAYMEE_SANDBOX_URL || 'https://sandbox.p
 const PAYMEE_TOKEN = import.meta.env.VITE_PAYMEE_TOKEN;
 const WEBHOOK_URL = import.meta.env.VITE_WEBHOOK_URL;
 
+function normalizeStatus(value) {
+  if (typeof value === 'boolean') return value ? 'completed' : 'failed';
+  if (typeof value === 'number') return value === 1 ? 'completed' : 'failed';
+  if (!value) return 'failed';
+  const s = String(value).trim().toLowerCase();
+  const truthy = new Set(['1', 'true', 'yes', 'paid', 'success', 'ok', 'completed']);
+  const pending = new Set(['pending', 'in_progress', 'processing', 'wait']);
+  const failed = new Set(['0', 'false', 'failed', 'cancelled', 'canceled']);
+  if (truthy.has(s)) return 'completed';
+  if (pending.has(s)) return 'pending';
+  if (failed.has(s)) return 'failed';
+  return 'unknown';
+}
+
 // Get frontend base URL - must be HTTPS for Paymee
 const getBaseUrl = () => {
   // Use environment variable if set (for production or ngrok)
@@ -183,10 +197,13 @@ class PaymeeService {
       }
 
       const paymentData = paymentDoc.data();
-      
+      // Normalize status for frontend consumption so UI treats similar values consistently
+      const normalized = normalizeStatus(paymentData.status);
+
       return {
         success: true,
-        status: paymentData.status,
+        status: normalized,
+        rawStatus: paymentData.status,
         data: paymentData
       };
     } catch (error) {

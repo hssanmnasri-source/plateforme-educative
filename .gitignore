@@ -2,3 +2,6 @@ node_modules/
 .env
 .env.local
 serviceAccountKey.json
+
+# Ignore any Firebase service account files in backend
+/backend/education-platform-backend-firebase-adminsdk-*.json
