@@ -235,11 +235,40 @@ app.post('/paymee-webhook', async (req, res) => {
       const paymentData = paymentDoc.data();
       console.log('📄 Paiement trouvé:', paymentData);
 
-<<<<<<< HEAD
-      if (payment_status === true) {
-=======
-      if (normalizePaymeeStatus(payment_status)) {
->>>>>>> d579dbf (chore(backend): harden Firebase loading, normalize Paymee status, and ignore service-account files)
+      // Normalize incoming payment_status and, if ambiguous, verify with Paymee using stored token
+      let finalStatusTruthy = normalizePaymeeStatus(payment_status);
+
+      if (!finalStatusTruthy && paymentData.paymeeToken) {
+        try {
+          console.log('🔍 payment_status non concluante, vérification auprès de Paymee via token...');
+          const paymeeApiUrl = process.env.PAYMEE_API_URL || 'https://sandbox.paymee.tn/api/v2';
+          const paymeeToken = process.env.PAYMEE_API_TOKEN;
+          const checkRes = await fetch(`${paymeeApiUrl}/payments/check`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Token ${paymeeToken}`
+            },
+            body: JSON.stringify({ token: paymentData.paymeeToken })
+          });
+
+          if (checkRes.ok) {
+            const checkData = await checkRes.json();
+            console.log('📊 Paymee check response:', checkData);
+            const paymeeRemoteStatus = checkData?.data?.status;
+            if (paymeeRemoteStatus) {
+              finalStatusTruthy = normalizePaymeeStatus(paymeeRemoteStatus);
+              console.log('🔎 Statut Paymee distant normalisé:', paymeeRemoteStatus, '->', finalStatusTruthy);
+            }
+          } else {
+            console.warn('⚠️ Vérification Paymee échouée:', checkRes.status, checkRes.statusText);
+          }
+        } catch (err) {
+          console.warn('⚠️ Erreur lors de la vérification Paymee (non bloquant):', err.message);
+        }
+      }
+
+      if (finalStatusTruthy) {
         console.log('💰 Paiement réussi - Mise à jour...');
 
         // 1. Mettre à jour le paiement
@@ -281,11 +310,7 @@ app.post('/paymee-webhook', async (req, res) => {
         console.log(`   - Frais: ${cost} TND`);
 
       } else {
-<<<<<<< HEAD
         console.log('❌ Paiement échoué');
-=======
-        console.log('❌ Paiement échoué - Status reçu:', payment_status, 'Type:', typeof payment_status);
->>>>>>> d579dbf (chore(backend): harden Firebase loading, normalize Paymee status, and ignore service-account files)
 
         // Mettre à jour le statut à "failed"
         await paymentRef.update({
