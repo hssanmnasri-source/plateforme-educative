@@ -51,16 +51,20 @@ export const AuthProvider = ({ children }) => {
         // Debug: show loaded profile (returned from loadUserProfile)
         console.log('After loadUserProfile - userProfile:', profile);
 
-        // 🔔 Activer les notifications
-        await notificationService.initialize();
-        const result = await notificationService.subscribeToNotifications(user.uid);
-        if (result.success) {
-          console.log('✅ Notifications activées');
-        }
+        // 🔔 Activate notifications for non-admin users only
+        if (profile?.role !== 'admin') {
+          await notificationService.initialize();
+          const result = await notificationService.subscribeToNotifications(user.uid);
+          if (result.success) {
+            console.log('✅ Notifications activées');
+          }
 
-        notificationService.onMessageReceived((payload) => {
-          console.log('📨 Nouvelle notification:', payload);
-        });
+          notificationService.onMessageReceived((payload) => {
+            console.log('📨 Nouvelle notification:', payload);
+          });
+        } else {
+          console.log('Notifications skipped for admin user');
+        }
       } else {
         setUserProfile(null);
       }
