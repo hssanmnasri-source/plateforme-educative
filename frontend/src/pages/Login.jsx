@@ -1,11 +1,7 @@
-// 📁 src/pages/Login.jsx
-// ========================================
-
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Mail, Lock, Chrome, AlertCircle } from 'lucide-react';
-import { ADMIN_PATH } from '../config/routes';
 
 export default function Login() {
   const [formData, setFormData] = useState({
@@ -14,7 +10,7 @@ export default function Login() {
   });
   const [loading, setLoading] = useState(false);
   
-  const { login, loginWithGoogle, error, setError } = useAuth();
+  const { login, loginWithGoogle, error, setError, userProfile } = useAuth(); // ← AJOUTER userProfile ici
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -27,23 +23,32 @@ export default function Login() {
     const result = await login(formData.email, formData.password);
     
     if (result.success) {
-      // Wait briefly for AuthContext to load userProfile, then redirect admins to /admin
-      const waitForProfile = async (timeoutMs = 3000) => {
-        const start = Date.now();
-        while (Date.now() - start < timeoutMs) {
-          if (userProfile) return userProfile;
-          // eslint-disable-next-line no-await-in-loop
-          await new Promise((r) => setTimeout(r, 200));
+      // Attendre que le profil soit chargé
+      setTimeout(() => {
+        // Vérifier le rôle après le login
+        if (result.user) {
+          // Le userProfile sera chargé par AuthContext
+          // On vérifie après un court délai
+          const checkProfile = setInterval(() => {
+            if (userProfile) {
+              clearInterval(checkProfile);
+              if (userProfile.role === 'admin') {
+                navigate('/admin', { replace: true });
+              } else {
+                navigate(from, { replace: true });
+              }
+            }
+          }, 100);
+          
+          // Timeout après 3 secondes
+          setTimeout(() => {
+            clearInterval(checkProfile);
+            navigate(from, { replace: true });
+          }, 3000);
+        } else {
+          navigate(from, { replace: true });
         }
-        return null;
-      };
-
-      const profile = await waitForProfile();
-          if (profile?.role === 'admin') {
-            navigate(ADMIN_PATH, { replace: true });
-      } else {
-        navigate(from, { replace: true });
-      }
+      }, 500);
     }
     setLoading(false);
   };
@@ -51,23 +56,29 @@ export default function Login() {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     const result = await loginWithGoogle();
+    
     if (result.success) {
-      const waitForProfile = async (timeoutMs = 3000) => {
-        const start = Date.now();
-        while (Date.now() - start < timeoutMs) {
-          if (userProfile) return userProfile;
-          // eslint-disable-next-line no-await-in-loop
-          await new Promise((r) => setTimeout(r, 200));
+      setTimeout(() => {
+        if (result.user) {
+          const checkProfile = setInterval(() => {
+            if (userProfile) {
+              clearInterval(checkProfile);
+              if (userProfile.role === 'admin') {
+                navigate('/admin', { replace: true });
+              } else {
+                navigate(from, { replace: true });
+              }
+            }
+          }, 100);
+          
+          setTimeout(() => {
+            clearInterval(checkProfile);
+            navigate(from, { replace: true });
+          }, 3000);
+        } else {
+          navigate(from, { replace: true });
         }
-        return null;
-      };
-
-      const profile = await waitForProfile();
-          if (profile?.role === 'admin') {
-            navigate(ADMIN_PATH, { replace: true });
-      } else {
-        navigate(from, { replace: true });
-      }
+      }, 500);
     }
     setLoading(false);
   };
