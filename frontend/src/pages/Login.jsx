@@ -26,7 +26,23 @@ export default function Login() {
     const result = await login(formData.email, formData.password);
     
     if (result.success) {
-      navigate(from, { replace: true });
+      // Wait briefly for AuthContext to load userProfile, then redirect admins to /admin
+      const waitForProfile = async (timeoutMs = 3000) => {
+        const start = Date.now();
+        while (Date.now() - start < timeoutMs) {
+          if (userProfile) return userProfile;
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((r) => setTimeout(r, 200));
+        }
+        return null;
+      };
+
+      const profile = await waitForProfile();
+      if (profile?.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate(from, { replace: true });
+      }
     }
     setLoading(false);
   };
@@ -35,7 +51,22 @@ export default function Login() {
     setLoading(true);
     const result = await loginWithGoogle();
     if (result.success) {
-      navigate(from, { replace: true });
+      const waitForProfile = async (timeoutMs = 3000) => {
+        const start = Date.now();
+        while (Date.now() - start < timeoutMs) {
+          if (userProfile) return userProfile;
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((r) => setTimeout(r, 200));
+        }
+        return null;
+      };
+
+      const profile = await waitForProfile();
+      if (profile?.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate(from, { replace: true });
+      }
     }
     setLoading(false);
   };
