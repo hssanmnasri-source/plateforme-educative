@@ -1,13 +1,14 @@
 // 📁 src/pages/Home.jsx (exemple simple)
 // ========================================
 
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { BookOpen, Users, Award, ArrowRight } from 'lucide-react';
 import NotificationPrompt from '../components/common/NotificationPrompt';
 
 export default function Home() {
   const { currentUser, userProfile } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
@@ -37,6 +38,12 @@ export default function Home() {
                     <Link
                       to="/admin"
                       className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600"
+                      onClick={(e) => {
+                        console.log('Admin link clicked - userProfile:', userProfile);
+                        // Ensure navigation even if Link is blocked by something
+                        e.preventDefault();
+                        navigate('/admin');
+                      }}
                     >
                       Admin
                     </Link>
