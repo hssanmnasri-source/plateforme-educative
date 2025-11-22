@@ -3,6 +3,7 @@
 
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { ADMIN_PATH } from '../config/routes';
 import { BookOpen, Users, Award, ArrowRight } from 'lucide-react';
 import NotificationPrompt from '../components/common/NotificationPrompt';
 
@@ -36,13 +37,13 @@ export default function Home() {
                   </Link>
                   {userProfile?.role === 'admin' && (
                     <Link
-                      to="/admin"
+                      to={ADMIN_PATH}
                       className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600"
                       onClick={(e) => {
                         console.log('Admin link clicked - userProfile:', userProfile);
                         // Ensure navigation even if Link is blocked by something
                         e.preventDefault();
-                        navigate('/admin');
+                        navigate(ADMIN_PATH);
                       }}
                     >
                       Admin

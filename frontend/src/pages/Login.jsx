@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Mail, Lock, Chrome, AlertCircle } from 'lucide-react';
+import { ADMIN_PATH } from '../config/routes';
 
 export default function Login() {
   const [formData, setFormData] = useState({
@@ -38,8 +39,8 @@ export default function Login() {
       };
 
       const profile = await waitForProfile();
-      if (profile?.role === 'admin') {
-        navigate('/admin', { replace: true });
+          if (profile?.role === 'admin') {
+            navigate(ADMIN_PATH, { replace: true });
       } else {
         navigate(from, { replace: true });
       }
@@ -62,8 +63,8 @@ export default function Login() {
       };
 
       const profile = await waitForProfile();
-      if (profile?.role === 'admin') {
-        navigate('/admin', { replace: true });
+          if (profile?.role === 'admin') {
+            navigate(ADMIN_PATH, { replace: true });
       } else {
         navigate(from, { replace: true });
       }

@@ -13,6 +13,7 @@ import MyCourses from './pages/MyCourses';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentCancel from './pages/PaymentCancel';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import { ADMIN_PATH, DASHBOARD_PATH } from './config/routes';
 
 function App() {
   return (
@@ -45,7 +46,7 @@ function App() {
             }
           />
           <Route
-            path="/admin"
+            path={ADMIN_PATH}
             element={
               <ProtectedRoute adminOnly={true}>
                 <AdminDashboard />
@@ -54,7 +55,7 @@ function App() {
           />
           {/* Also expose the admin dashboard at /dashboard for convenience */}
           <Route
-            path="/dashboard"
+            path={DASHBOARD_PATH}
             element={
               <ProtectedRoute adminOnly={true}>
                 <AdminDashboard />
