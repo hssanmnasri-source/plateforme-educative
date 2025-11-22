@@ -14,6 +14,7 @@ import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentCancel from './pages/PaymentCancel';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import { ADMIN_PATH, DASHBOARD_PATH } from './config/routes';
+import AdminStatusOverlay from './components/debug/AdminStatusOverlay';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
       }}
     >
       <AuthProvider>
+        <AdminStatusOverlay />
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
