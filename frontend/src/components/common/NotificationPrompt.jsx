@@ -6,9 +6,10 @@ import { useAuth } from '../../contexts/AuthContext';
 export default function NotificationPrompt() {
   const [show, setShow] = useState(true);
   const [loading, setLoading] = useState(false);
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
 
-  if (!currentUser || !show) {
+  // Do not show the prompt for non-authenticated users, if hidden, or for admins
+  if (!currentUser || !show || userProfile?.role === 'admin') {
     return null;
   }
 
