@@ -4,6 +4,8 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Users, BookOpen, BarChart3, Settings, Plus } from 'lucide-react';
+import AdminAdd from '../../components/admin/AdminAdd';
+import NotificationList from '../../components/notifications/NotificationList';
 
 export default function AdminDashboard() {
   const { userProfile } = useAuth();
@@ -47,36 +49,18 @@ export default function AdminDashboard() {
               ))}
             </div>
 
-            {/* Recent Activity */}
-            <div className="bg-white rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Activité récente</h3>
+            {/* Admin tools + Recent Notifications */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="md:col-span-2">
+                <AdminAdd onCreate={(item) => setNotifications((s) => [item, ...s])} />
               </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                        <BookOpen className="w-4 h-4 text-green-600" />
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-900">Nouveau cours créé</p>
-                      <p className="text-sm text-gray-500">"React Avancé" par Ahmed Ben Salem</p>
-                    </div>
-                    <div className="ml-auto text-sm text-gray-500">Il y a 2 heures</div>
+              <div>
+                <div className="bg-white rounded-lg shadow">
+                  <div className="px-6 py-4 border-b border-gray-200">
+                    <h3 className="text-lg font-medium text-gray-900">Notifications récentes</h3>
                   </div>
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                        <Users className="w-4 h-4 text-blue-600" />
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-900">Nouvel utilisateur</p>
-                      <p className="text-sm text-gray-500">Fatma Aloui s'est inscrite</p>
-                    </div>
-                    <div className="ml-auto text-sm text-gray-500">Il y a 4 heures</div>
+                  <div className="p-4">
+                    <NotificationList items={notifications} />
                   </div>
                 </div>
               </div>
