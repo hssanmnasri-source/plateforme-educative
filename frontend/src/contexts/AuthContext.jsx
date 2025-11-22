@@ -40,9 +40,13 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      console.log('Auth state changed - uid:', user?.uid || null);
       
       if (user) {
         await loadUserProfile(user.uid);
+
+        // Debug: show loaded profile after loadUserProfile
+        console.log('After loadUserProfile - userProfile (may be slightly delayed):', user?.uid);
 
         // 🔔 Activer les notifications
         await notificationService.initialize();
