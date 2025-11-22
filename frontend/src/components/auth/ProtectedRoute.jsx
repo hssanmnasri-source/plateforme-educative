@@ -12,11 +12,16 @@ export default function ProtectedRoute({ children, adminOnly = false }) {
     );
   }
 
+  // Debug logs to help diagnose routing/authorization issues
+  console.log('ProtectedRoute - adminOnly:', adminOnly, 'currentUser:', !!currentUser, 'userProfile:', userProfile);
+
   if (!currentUser) {
+    console.log('ProtectedRoute redirecting to /login because no currentUser');
     return <Navigate to="/login" replace />;
   }
 
   if (adminOnly && userProfile?.role !== 'admin') {
+    console.log('ProtectedRoute blocking admin route - userProfile.role:', userProfile?.role);
     return <Navigate to="/" replace />;
   }
 
