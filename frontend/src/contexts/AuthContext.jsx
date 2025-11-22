@@ -30,10 +30,13 @@ export const AuthProvider = ({ children }) => {
       const result = await authService.getUserData(uid);
       if (result.success) {
         setUserProfile(result.data);
+        console.log('Loaded userProfile from Firestore:', result.data);
+        return result.data;
       }
     } catch (err) {
       console.error('Error loading user profile:', err);
     }
+    return null;
   };
 
   // Écouter les changements d'authentification
@@ -41,12 +44,12 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       console.log('Auth state changed - uid:', user?.uid || null);
-      
-      if (user) {
-        await loadUserProfile(user.uid);
 
-        // Debug: show loaded profile after loadUserProfile
-        console.log('After loadUserProfile - userProfile (may be slightly delayed):', user?.uid);
+      if (user) {
+        const profile = await loadUserProfile(user.uid);
+
+        // Debug: show loaded profile (returned from loadUserProfile)
+        console.log('After loadUserProfile - userProfile:', profile);
 
         // 🔔 Activer les notifications
         await notificationService.initialize();
@@ -57,12 +60,11 @@ export const AuthProvider = ({ children }) => {
 
         notificationService.onMessageReceived((payload) => {
           console.log('📨 Nouvelle notification:', payload);
-          // TODO: Ajouter un toast si nécessaire
         });
       } else {
         setUserProfile(null);
       }
-      
+
       setLoading(false);
     });
 
