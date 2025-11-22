@@ -52,6 +52,15 @@ function App() {
               </ProtectedRoute>
             }
           />
+          {/* Also expose the admin dashboard at /dashboard for convenience */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute adminOnly={true}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/my-courses"
             element={
