@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import admin from 'firebase-admin';
 import { readFileSync } from 'fs';
 import notificationService from './src/services/notification.service.js';
+import { sendEmail } from './emailService.js';
 
 dotenv.config();
 
@@ -609,6 +610,57 @@ app.post('/sync-payment', async (req, res) => {
     }
 
     console.log('✅ Paiement synchronisé avec succès');
+
+    let recipientEmail = 'unknown@example.com';
+    let courseTitle = 'votre cours';
+    
+    try {
+      // 1. Récupérer l'email de l'utilisateur
+      const userSnapshot = await db.collection('users').doc(paymentData.userId).get();
+      if (userSnapshot.exists && userSnapshot.data()?.email) {
+        recipientEmail = userSnapshot.data().email;
+        console.log(`📧 Email utilisateur trouvé: ${recipientEmail}`);
+      } else {
+        console.warn(`⚠️ Email manquant ou utilisateur introuvable pour userId: ${paymentData.userId}`);
+        // Optionnel: Si l'email est absolument requis, vous pourriez ici décider de NE PAS envoyer l'email.
+      }
+
+      // 2. Récupérer le titre du cours
+      const courseSnapshot = await db.collection('courses').doc(paymentData.courseId).get();
+      if (courseSnapshot.exists && courseSnapshot.data()?.title) {
+        courseTitle = courseSnapshot.data().title;
+        console.log(`📚 Titre du cours trouvé: ${courseTitle}`);
+      } else {
+        console.warn(`⚠️ Titre manquant ou cours introuvable pour courseId: ${paymentData.courseId}`);
+      }
+    } catch (dataFetchError) {
+      console.error('❌ Erreur lors de la récupération des données pour l\'email:', dataFetchError.message);
+      // Continuer avec les valeurs par défaut
+    }
+
+    const emailSubject = `🎉 Paiement confirmé pour le cours: ${courseTitle}`;
+    const emailBody = `
+        <h1>Bonjour,</h1>
+        <p>Félicitations ! Votre paiement a été confirmé avec succès.</p>
+        <p>Vous avez maintenant accès au cours <strong>${courseTitle}</strong>.</p>
+        <p>Cliquez ici pour commencer : <a href="[Your App Link]">Accéder à mon cours</a></p>
+        <p>Référence du paiement: ${paymentId}</p>
+        <p>L'équipe My Company.</p>
+    `;
+
+    // 3. Envoyer l'email
+    try {
+      // Assurez-vous que l'email est différent de la valeur par défaut 'unknown@example.com' avant d'envoyer
+      if (recipientEmail !== 'unknown@example.com') {
+        await sendEmail(recipientEmail, emailSubject, emailBody); // Utilisation de 'sendEmail' importée
+        console.log('✅ Email de confirmation envoyé');
+      } else {
+        console.warn('⚠️ Email non envoyé car l\'adresse du destinataire est manquante ou inconnue.');
+      }
+    } catch (emailError) {
+      console.warn('⚠️ Erreur lors de l\'envoi de l\'email (non bloquant):', emailError.message);
+    }
+    // ========================================
 
     res.json({ 
       success: true, 
