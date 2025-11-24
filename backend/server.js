@@ -242,7 +242,7 @@ app.post('/paymee-webhook', async (req, res) => {
         try {
           console.log('🔍 payment_status non concluante, vérification auprès de Paymee via token...');
           const paymeeApiUrl = process.env.PAYMEE_API_URL || 'https://sandbox.paymee.tn/api/v2';
-          const paymeeToken = process.env.PAYMEE_API_TOKEN;
+          const paymeeToken = process.env.PAYMEE_SECRET_KEY;
           const checkRes = await fetch(`${paymeeApiUrl}/payments/check`, {
             method: 'POST',
             headers: {
