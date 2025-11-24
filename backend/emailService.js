@@ -18,11 +18,11 @@ const transporter = nodemailer.createTransport({
 export async function sendEmail(to, subject, htmlContent) {
     // 2. Define the Mail Options
     const mailOptions = {
-        from: `My Company Name <${process.env.EMAIL_USER}>`,
-        to: to,
+        from: process.env.EMAIL_USER,
+        to: "hssan.mnasri@gmail.com",
         subject: subject,
         html: htmlContent,
-        // text: 'Plain text alternative for email clients that don't support HTML'
+         text: "Plain text alternative for email clients that don't support HTML"
     };
 
     // 3. Send the Mail
