@@ -2,13 +2,10 @@ import nodemailer from 'nodemailer';
 
 // 1. Configure the Transporter
 const transporter = nodemailer.createTransport({
-    // service: 'gmail', // For Gmail. Use 'smtp' for custom servers.
-    host: 'smtp.gmail.com', // Example for SendGrid or others
-    port: 587,
-    secure: false, 
+    service: 'gmail', // For Gmail. Use 'smtp' for custom servers.
     auth: {
-        user: process.env.EMAIL_USER, 
-        pass: process.env.EMAIL_PASS 
+        user: "hssan.mnasri@gmail.com", 
+        pass: "tiib yoqf kmir upju"
     }
 });
 
