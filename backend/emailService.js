@@ -3,7 +3,7 @@ import nodemailer from 'nodemailer';
 // 1. Configure the Transporter
 const transporter = nodemailer.createTransport({
     service: 'gmail', // For Gmail. Use 'smtp' for custom servers.
-    host: 'smtp.sendgrid.net', // Example for SendGrid or others
+    host: 'smtp.gmail.com', // Example for SendGrid or others
     port: 587,
     // secure: false, // true for port 465, false for other ports
     auth: {
