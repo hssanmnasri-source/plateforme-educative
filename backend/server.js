@@ -506,7 +506,7 @@ app.post('/sync-payment', async (req, res) => {
       try {
         console.log('🔍 Vérification du statut avec Paymee...');
         const paymeeApiUrl = process.env.PAYMEE_API_URL || 'https://sandbox.paymee.tn/api/v2';
-        const paymeeToken = process.env.PAYMEE_API_TOKEN;
+        const paymeeToken = process.env.PAYMEE_SECRET_KEY;
         
         const paymeeResponse = await fetch(`${paymeeApiUrl}/payments/check`, {
           method: 'POST',
