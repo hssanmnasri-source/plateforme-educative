@@ -1,4 +1,4 @@
-const nodemailer = require('nodemailer');
+import nodemailer from 'nodemailer';
 
 // 1. Configure the Transporter
 const transporter = nodemailer.createTransport({
@@ -19,7 +19,7 @@ const transporter = nodemailer.createTransport({
  * @param {string} subject - Subject line of the email
  * @param {string} htmlContent - HTML body of the email
  */
-async function sendEmail(to, subject, htmlContent) {
+export async function sendEmail(to, subject, htmlContent) {
     // 2. Define the Mail Options
     const mailOptions = {
         from: `My Company Name <${process.env.EMAIL_USER}>`,
@@ -40,4 +40,3 @@ async function sendEmail(to, subject, htmlContent) {
     }
 }
 
-module.exports = { sendEmail };
