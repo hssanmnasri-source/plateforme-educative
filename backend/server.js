@@ -10,9 +10,15 @@ import { readFileSync } from 'fs';
 import notificationService from './src/services/notification.service.js';
 import { sendEmail } from './emailService.js';
 import nodemailer from 'nodemailer';
+import sgMail from '@sendgrid/mail';
 
 
 dotenv.config();
+
+
+// 1. Set the API Key
+// This line configures the SDK to use the API key stored in your Render environment.
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 // Initialize Firebase Admin
 let serviceAccount;

@@ -1,38 +1,44 @@
-import nodemailer from 'nodemailer';
+import sgMail from '@sendgrid/mail';
 
-// 1. Configure the Transporter
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: "hssan.mnasri@gmail.com", 
-        pass: "tiib yoqf kmir upju"
-    }
-});
 
 /**
- * Sends a confirmation email.
- * @param {string} to - Recipient email address
+ * Sends a confirmation email using SendGrid's HTTP API (Port 443).
+ * * @param {string} to - Recipient email address
  * @param {string} subject - Subject line of the email
  * @param {string} htmlContent - HTML body of the email
  */
 export async function sendEmail(to, subject, htmlContent) {
-    // 2. Define the Mail Options
-    const mailOptions = {
-        from: process.env.EMAIL_USER,
+    
+    // Ensure the sender email is configured
+    if (!process.env.SENDER_EMAIL) {
+        console.error('❌ SENDGRID_SENDER_EMAIL is not set in environment variables.');
+        throw new Error('Email configuration error: Sender email missing.');
+    }
+
+    // 2. Define the Mail Object
+    const msg = {
         to: to,
+        from: {
+            email: process.env.SENDER_EMAIL, // Must match your verified SendGrid sender
+            name: 'My Course Platform' 
+        },
         subject: subject,
         html: htmlContent,
-        text: "Plain text alternative for email clients that don't support HTML"
     };
 
-    // 3. Send the Mail
+    // 3. Send the Mail via API
     try {
-        let info = await transporter.sendMail(mailOptions);
-        console.log('✅ Email sent: %s', info.messageId);
-        return info;
+        // This makes an HTTPS request, avoiding the SMTP port block
+        const [response] = await sgMail.send(msg); 
+        console.log(`✅ Email sent via SendGrid API. Status: ${response.statusCode}`);
+        return response;
     } catch (error) {
-        console.error('❌ Error sending email:', error.message);
-        throw error;
+        // SendGrid API errors are usually found in the response body
+        console.error('❌ Error sending email via SendGrid:', error.message);
+        // Log detailed API errors if available
+        if (error.response?.body?.errors) {
+            console.error('   API Errors:', error.response.body.errors);
+        }
+         throw new Error('SendGrid API failure: ' + error.message);
     }
 }
-
