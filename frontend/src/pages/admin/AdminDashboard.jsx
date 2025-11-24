@@ -3,13 +3,19 @@
 
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Users, BookOpen, BarChart3, Settings, Plus } from 'lucide-react';
+import { Users, BookOpen, BarChart3, Settings } from 'lucide-react';
 import AdminAdd from '../../components/admin/AdminAdd';
 import NotificationList from '../../components/notifications/NotificationList';
+import CourseList from '../../components/admin/CourseList';
+import CourseForm from '../../components/admin/CourseForm';
+import UserList from '../../components/admin/UserList';
 
 export default function AdminDashboard() {
   const { userProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const [showCourseForm, setShowCourseForm] = useState(false);
+  const [editingCourse, setEditingCourse] = useState(null);
+  const [notifications, setNotifications] = useState([]);
 
   const tabs = [
     { id: 'overview', name: 'Vue d\'ensemble', icon: BarChart3 },
@@ -39,9 +45,8 @@ export default function AdminDashboard() {
                       <p className="text-sm font-medium text-gray-600">{stat.name}</p>
                       <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
                     </div>
-                    <div className={`text-sm font-medium ${
-                      stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
-                    }`}>
+                    <div className={`text-sm font-medium ${stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
+                      }`}>
                       {stat.change}
                     </div>
                   </div>
@@ -67,37 +72,40 @@ export default function AdminDashboard() {
             </div>
           </div>
         );
-      
+
       case 'courses':
         return (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-900">Gestion des Cours</h2>
-              <button className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 flex items-center">
-                <Plus className="w-4 h-4 mr-2" />
-                Nouveau Cours
-              </button>
-            </div>
-            <div className="bg-white rounded-lg shadow">
-              <div className="p-6">
-                <p className="text-gray-600">Interface de gestion des cours à implémenter</p>
-              </div>
-            </div>
+            {showCourseForm ? (
+              <CourseForm
+                courseId={editingCourse?.id}
+                onSave={() => {
+                  setShowCourseForm(false);
+                  setEditingCourse(null);
+                }}
+                onCancel={() => {
+                  setShowCourseForm(false);
+                  setEditingCourse(null);
+                }}
+              />
+            ) : (
+              <CourseList
+                onEdit={(course) => {
+                  setEditingCourse(course);
+                  setShowCourseForm(true);
+                }}
+                onAddNew={() => {
+                  setEditingCourse(null);
+                  setShowCourseForm(true);
+                }}
+              />
+            )}
           </div>
         );
-      
+
       case 'users':
-        return (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Gestion des Utilisateurs</h2>
-            <div className="bg-white rounded-lg shadow">
-              <div className="p-6">
-                <p className="text-gray-600">Interface de gestion des utilisateurs à implémenter</p>
-              </div>
-            </div>
-          </div>
-        );
-      
+        return <UserList />;
+
       case 'settings':
         return (
           <div className="space-y-6">
@@ -109,7 +117,7 @@ export default function AdminDashboard() {
             </div>
           </div>
         );
-      
+
       default:
         return null;
     }
@@ -140,11 +148,10 @@ export default function AdminDashboard() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
-                      activeTab === tab.id
-                        ? 'bg-green-100 text-green-700'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                    }`}
+                    className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${activeTab === tab.id
+                      ? 'bg-green-100 text-green-700'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                      }`}
                   >
                     <Icon className="w-5 h-5 mr-3" />
                     {tab.name}

@@ -8,7 +8,8 @@ import ForgotPassword from './pages/ForgotPassword';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
 import Courses from './pages/Courses';
-import CourseDetail from './pages/CourseDetail';  // NOUVEAU
+import CourseDetail from './pages/CourseDetail';
+import CourseViewer from './pages/CourseViewer';
 import MyCourses from './pages/MyCourses';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentCancel from './pages/PaymentCancel';
@@ -30,10 +31,10 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          
+
           <Route path="/" element={<Home />} />
           <Route path="/courses" element={<Courses />} />
-          <Route path="/courses/:id" element={<CourseDetail />} />  {/* NOUVEAU */}
+          <Route path="/courses/:id" element={<CourseDetail />} />
 
           {/* Paiement */}
           <Route path="/payment/success" element={<PaymentSuccess />} />
@@ -69,6 +70,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <MyCourses />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/course/:courseId/view"
+            element={
+              <ProtectedRoute>
+                <CourseViewer />
               </ProtectedRoute>
             }
           />
