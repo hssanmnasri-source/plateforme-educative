@@ -5,7 +5,7 @@ const transporter = nodemailer.createTransport({
     service: 'gmail', // For Gmail. Use 'smtp' for custom servers.
     host: 'smtp.gmail.com', // Example for SendGrid or others
     port: 587,
-    // secure: false, // true for port 465, false for other ports
+    secure: false, 
     auth: {
         user: process.env.EMAIL_USER, 
         pass: process.env.EMAIL_PASS 
