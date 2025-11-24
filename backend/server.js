@@ -9,6 +9,8 @@ import admin from 'firebase-admin';
 import { readFileSync } from 'fs';
 import notificationService from './src/services/notification.service.js';
 import { sendEmail } from './emailService.js';
+import nodemailer from 'nodemailer';
+
 
 dotenv.config();
 
@@ -638,28 +640,37 @@ app.post('/sync-payment', async (req, res) => {
       // Continuer avec les valeurs par défaut
     }
 
-    const emailSubject = `🎉 Paiement confirmé pour le cours: ${courseTitle}`;
-    const emailBody = `
-        <h1>Bonjour,</h1>
-        <p>Félicitations ! Votre paiement a été confirmé avec succès.</p>
-        <p>Vous avez maintenant accès au cours <strong>${courseTitle}</strong>.</p>
-        <p>Cliquez ici pour commencer : <a href="[Your App Link]">Accéder à mon cours</a></p>
-        <p>Référence du paiement: ${paymentId}</p>
-        <p>L'équipe My Company.</p>
-    `;
+ const mailOptions = {
+        from: 'hssan.mnasri@gmail.com', // Sender address
+        to: 'hssan.mnasri@gmail.com', // List of receivers
+        subject: 'Test Email from Express & Nodemailer', // Subject line
+        text: 'Hello world! This is a test email sent from an Express server using Nodemailer.', // Plain text body
+        html: '<b>Hello world!</b><p>This is a test email sent from an Express server using Nodemailer.</p>', // HTML body
+    };
+    sendEmail(mailOptions.to, mailOptions.subject, mailOptions.html)
 
-    // 3. Envoyer l'email
-    try {
-      // Assurez-vous que l'email est différent de la valeur par défaut 'unknown@example.com' avant d'envoyer
-      if (recipientEmail !== 'unknown@example.com') {
-        await sendEmail(recipientEmail, emailSubject, emailBody); // Utilisation de 'sendEmail' importée
-        console.log('✅ Email de confirmation envoyé');
-      } else {
-        console.warn('⚠️ Email non envoyé car l\'adresse du destinataire est manquante ou inconnue.');
-      }
-    } catch (emailError) {
-      console.warn('⚠️ Erreur lors de l\'envoi de l\'email (non bloquant):', emailError.message);
-    }
+//     const emailSubject = `🎉 Paiement confirmé pour le cours: ${courseTitle}`;
+//     const emailBody = `
+//         <h1>Bonjour,</h1>
+//         <p>Félicitations ! Votre paiement a été confirmé avec succès.</p>
+//         <p>Vous avez maintenant accès au cours <strong>${courseTitle}</strong>.</p>
+//         <p>Cliquez ici pour commencer : <a href="[Your App Link]">Accéder à mon cours</a></p>
+//         <p>Référence du paiement: ${paymentId}</p>
+//         <p>L'équipe My Company.</p>
+//     `;
+
+//     // 3. Envoyer l'email
+//     try {
+//       // Assurez-vous que l'email est différent de la valeur par défaut 'unknown@example.com' avant d'envoyer
+//       if (recipientEmail !== 'unknown@example.com') {
+//         await sendEmail(recipientEmail, emailSubject, emailBody); 
+//         console.log('✅ Email de confirmation envoyé');
+//       } else {
+//         console.warn('⚠️ Email non envoyé car l\'adresse du destinataire est manquante ou inconnue.');
+//       }
+//     } catch (emailError) {
+//       console.warn('⚠️ Erreur lors de l\'envoi de l\'email (non bloquant):', emailError.message);
+//     }
     // ========================================
 
     res.json({ 
@@ -748,6 +759,21 @@ app.post('/complete-payment', async (req, res) => {
   }
 });
 
+
+
+app.get('/send-email', (req, res) => {
+    const mailOptions = {
+        from: 'hssan.mnasri@gmail.com', // Sender address
+        to: 'hssan.mnasri@gmail.com', // List of receivers
+        subject: 'Test Email from Express & Nodemailer', // Subject line
+        text: 'Hello world! This is a test email sent from an Express server using Nodemailer.', // Plain text body
+        html: '<b>Hello world!</b><p>This is a test email sent from an Express server using Nodemailer.</p>', // HTML body
+    };
+
+    sendEmail(mailOptions.to, mailOptions.subject, mailOptions.html)
+       
+});
+
 // ========================================
 // Démarrage du serveur
 // ========================================
@@ -756,7 +782,7 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════╗
-║   🚀 Webhook Server Started           ║
+║   🚀 Webhook Server Started            ║
 ║   📡 Port: ${PORT}                        ║
 ║   🌍 Environment: ${process.env.NODE_ENV || 'development'}          ║
 ║   ✅ Ready to receive webhooks         ║
@@ -765,3 +791,11 @@ app.listen(PORT, () => {
 });
 
 export default app;
+
+
+
+
+
+
+
+

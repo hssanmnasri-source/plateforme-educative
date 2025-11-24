@@ -2,7 +2,7 @@ import nodemailer from 'nodemailer';
 
 // 1. Configure the Transporter
 const transporter = nodemailer.createTransport({
-    service: 'gmail', // For Gmail. Use 'smtp' for custom servers.
+    service: 'gmail',
     auth: {
         user: "hssan.mnasri@gmail.com", 
         pass: "tiib yoqf kmir upju"
@@ -19,10 +19,10 @@ export async function sendEmail(to, subject, htmlContent) {
     // 2. Define the Mail Options
     const mailOptions = {
         from: process.env.EMAIL_USER,
-        to: "hssan.mnasri@gmail.com",
+        to: to,
         subject: subject,
         html: htmlContent,
-         text: "Plain text alternative for email clients that don't support HTML"
+        text: "Plain text alternative for email clients that don't support HTML"
     };
 
     // 3. Send the Mail
