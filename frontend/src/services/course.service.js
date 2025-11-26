@@ -17,8 +17,8 @@ import {
     limit,
     startAfter
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { db, storage } from '../config/firebase.config';
+import { db } from '../config/firebase.config';
+import cloudinaryService from './cloudinary.service';
 
 class CourseService {
     /**
@@ -188,18 +188,18 @@ class CourseService {
     }
 
     /**
-     * Upload thumbnail vers Firebase Storage
+     * Upload thumbnail to Cloudinary
      */
     async uploadThumbnail(file) {
         try {
-            const filename = `thumbnails/${Date.now()}_${file.name}`;
-            const storageRef = ref(storage, filename);
+            const result = await cloudinaryService.uploadImage(file, 'courses/thumbnails');
 
-            await uploadBytes(storageRef, file);
-            const url = await getDownloadURL(storageRef);
+            if (!result.success) {
+                throw new Error(result.error || 'Upload failed');
+            }
 
-            console.log('✅ Thumbnail uploadée:', url);
-            return url;
+            console.log('✅ Thumbnail uploaded:', result.url);
+            return result.url;
         } catch (error) {
             console.error('❌ Erreur upload thumbnail:', error);
             throw error;
