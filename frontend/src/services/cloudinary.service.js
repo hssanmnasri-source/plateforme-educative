@@ -6,6 +6,16 @@ class CloudinaryService {
     constructor() {
         this.cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
         this.uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'course_thumbnails';
+
+        // Debug: Log configuration on initialization
+        console.log('🔧 Cloudinary Config:', {
+            cloudName: this.cloudName,
+            uploadPreset: this.uploadPreset
+        });
+
+        if (!this.cloudName) {
+            console.error('❌ VITE_CLOUDINARY_CLOUD_NAME is not set! Check your .env file');
+        }
     }
 
     /**
