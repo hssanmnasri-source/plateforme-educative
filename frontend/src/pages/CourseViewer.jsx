@@ -224,31 +224,64 @@ export default function CourseViewer() {
                                                 <ul className="list-disc list-inside text-gray-700 space-y-1">
                                                     {course.outcomes.split('\n').filter(Boolean).map((outcome, i) => (
                                                         <li key={i}>{outcome}</li>
-                                    </div>
-                                        )}
-
-                                        {activeTab === 'qna' && (
-                                            <div>
-                                                <h3 className="text-lg font-semibold mb-3">Questions et Réponses</h3>
-                                                <p className="text-gray-600">Section Q&A à venir</p>
+                                                    ))}
+                                                </ul>
                                             </div>
                                         )}
                                     </div>
-                        </div>
-                        </div>
+                                )}
 
-                        {/* Sidebar - Course Curriculum */}
-                        <div className="lg:col-span-1">
-                            <CourseCurriculum
-                                courseId={courseId}
-                                currentLessonId={currentLesson?.id}
-                                onLessonSelect={setCurrentLesson}
-                                userProgress={userProgress}
-                                isPurchased={isPurchased}
-                            />
+                                {activeTab === 'quiz' && (
+                                    <div className="-m-6">
+                                        <ContentView
+                                            content={demoReactQuiz}
+                                            contentType="quiz"
+                                            onComplete={() => console.log('Quiz completed')}
+                                            onNext={handleNextLesson}
+                                        />
+                                    </div>
+                                )}
+
+                                {activeTab === 'exercise' && (
+                                    <div className="-m-6">
+                                        <ContentView
+                                            content={demoReactExercise}
+                                            contentType="exercise"
+                                            onComplete={() => console.log('Exercise completed')}
+                                            onNext={handleNextLesson}
+                                        />
+                                    </div>
+                                )}
+
+                                {activeTab === 'resources' && (
+                                    <div>
+                                        <h3 className="text-lg font-semibold mb-3">Ressources du cours</h3>
+                                        <p className="text-gray-600">Aucune ressource disponible pour l'instant</p>
+                                    </div>
+                                )}
+
+                                {activeTab === 'qna' && (
+                                    <div>
+                                        <h3 className="text-lg font-semibold mb-3">Questions et Réponses</h3>
+                                        <p className="text-gray-600">Section Q&A à venir</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
+                    </div>
+
+                    {/* Sidebar - Course Curriculum */}
+                    <div className="lg:col-span-1">
+                        <CourseCurriculum
+                            courseId={courseId}
+                            currentLessonId={currentLesson?.id}
+                            onLessonSelect={setCurrentLesson}
+                            userProgress={userProgress}
+                            isPurchased={isPurchased}
+                        />
                     </div>
                 </div>
             </div>
-            );
+        </div>
+    );
 }
