@@ -32,49 +32,67 @@ export default function CourseViewer() {
     }, [courseId, user]);
 
     const loadCourseData = async () => {
-        if (!courseId || !user) return;
+        console.log('🔍 loadCourseData called', { courseId, user: !!user, userProfile: !!userProfile });
 
-        setLoading(true);
-
-        // Load course details
-        const courseResult = await courseService.getCourseById(courseId);
-        if (courseResult.success) {
-            setCourse(courseResult.course);
+        if (!courseId || !user) {
+            console.log('⚠️ Early return - missing courseId or user');
+            return;
         }
 
-        // Check if user has purchased this course
-        const hasPurchased = userProfile?.purchasedCourses?.includes(courseId);
-        setIsPurchased(hasPurchased);
+        try {
+            setLoading(true);
 
-        // Load user progress
-        const progressResult = await progressService.getCourseProgress(user.uid, courseId);
-        if (progressResult.success) {
-            setUserProgress(progressResult.progress.completedLessons || []);
-        }
+            // Load course details
+            console.log('📚 Loading course:', courseId);
+            const courseResult = await courseService.getCourseById(courseId);
+            console.log('📚 Course result:', courseResult);
+            if (courseResult.success) {
+                setCourse(courseResult.course);
+            } else {
+                console.error('❌ Failed to load course');
+                setLoading(false);
+                return;
+            }
 
-        // Load all lessons for the course
-        const modulesResult = await lessonService.getModulesByCourse(courseId);
-        if (modulesResult.success) {
-            const allLessonsArray = [];
-            for (const module of modulesResult.modules) {
-                const lessonsResult = await lessonService.getLessonsByModule(module.id);
-                if (lessonsResult.success) {
-                    allLessonsArray.push(...lessonsResult.lessons.map(l => ({ ...l, moduleId: module.id, courseId })));
+            // Check if user has purchased this course
+            const hasPurchased = userProfile?.purchasedCourses?.includes(courseId);
+            console.log('💰 Has purchased:', hasPurchased);
+            setIsPurchased(hasPurchased);
+
+            // Load user progress
+            const progressResult = await progressService.getCourseProgress(user.uid, courseId);
+            if (progressResult.success) {
+                setUserProgress(progressResult.progress.completedLessons || []);
+            }
+
+            // Load all lessons for the course
+            const modulesResult = await lessonService.getModulesByCourse(courseId);
+            if (modulesResult.success) {
+                const allLessonsArray = [];
+                for (const module of modulesResult.modules) {
+                    const lessonsResult = await lessonService.getLessonsByModule(module.id);
+                    if (lessonsResult.success) {
+                        allLessonsArray.push(...lessonsResult.lessons.map(l => ({ ...l, moduleId: module.id, courseId })));
+                    }
+                }
+                setAllLessons(allLessonsArray);
+
+                // Set first lesson as current if none selected
+                if (allLessonsArray.length > 0 && !currentLesson) {
+                    // Start with first uncompleted lesson or first lesson
+                    const firstIncomplete = allLessonsArray.find(l =>
+                        !progressService.isLessonCompleted(l.id, progressResult.progress.completedLessons || [])
+                    );
+                    setCurrentLesson(firstIncomplete || allLessonsArray[0]);
                 }
             }
-            setAllLessons(allLessonsArray);
 
-            // Set first lesson as current if none selected
-            if (allLessonsArray.length > 0 && !currentLesson) {
-                // Start with first uncompleted lesson or first lesson
-                const firstIncomplete = allLessonsArray.find(l =>
-                    !progressService.isLessonCompleted(l.id, progressResult.progress.completedLessons || [])
-                );
-                setCurrentLesson(firstIncomplete || allLessonsArray[0]);
-            }
+            console.log('✅ Course data loaded successfully');
+            setLoading(false);
+        } catch (error) {
+            console.error('❌ Error loading course data:', error);
+            setLoading(false);
         }
-
-        setLoading(false);
     };
 
     const handleLessonComplete = (lessonId) => {
