@@ -4,13 +4,15 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, FileText, MessageSquare } from 'lucide-react';
+import { ArrowLeft, BookOpen, FileText, MessageSquare, Brain, Code } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import courseService from '../services/course.service';
 import lessonService from '../services/lesson.service';
 import progressService from '../services/progress.service';
 import LessonPlayer from '../components/lessons/LessonPlayer';
 import CourseCurriculum from '../components/courses/CourseCurriculum';
+import ContentView from '../components/content/ContentView';
+import { demoReactQuiz, demoReactExercise } from '../data/demoContent';
 
 export default function CourseViewer() {
     const { courseId } = useParams();
@@ -139,6 +141,8 @@ export default function CourseViewer() {
 
     const tabs = [
         { id: 'overview', name: 'Aperçu', icon: BookOpen },
+        { id: 'quiz', name: 'Quiz', icon: Brain },
+        { id: 'exercise', name: 'Exercice', icon: Code },
         { id: 'resources', name: 'Ressources', icon: FileText },
         { id: 'qna', name: 'Q&A', icon: MessageSquare }
     ];
@@ -196,8 +200,8 @@ export default function CourseViewer() {
                                                 key={tab.id}
                                                 onClick={() => setActiveTab(tab.id)}
                                                 className={`flex items-center px-6 py-3 border-b-2 font-medium text-sm ${activeTab === tab.id
-                                                        ? 'border-green-500 text-green-600'
-                                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                                    ? 'border-green-500 text-green-600'
+                                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                                     }`}
                                             >
                                                 <Icon className="w-4 h-4 mr-2" />
@@ -220,42 +224,31 @@ export default function CourseViewer() {
                                                 <ul className="list-disc list-inside text-gray-700 space-y-1">
                                                     {course.outcomes.split('\n').filter(Boolean).map((outcome, i) => (
                                                         <li key={i}>{outcome}</li>
-                                                    ))}
-                                                </ul>
+                                    </div>
+                                        )}
+
+                                        {activeTab === 'qna' && (
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-3">Questions et Réponses</h3>
+                                                <p className="text-gray-600">Section Q&A à venir</p>
                                             </div>
                                         )}
                                     </div>
-                                )}
-
-                                {activeTab === 'resources' && (
-                                    <div>
-                                        <h3 className="text-lg font-semibold mb-3">Ressources du cours</h3>
-                                        <p className="text-gray-600">Aucune ressource disponible pour l'instant</p>
-                                    </div>
-                                )}
-
-                                {activeTab === 'qna' && (
-                                    <div>
-                                        <h3 className="text-lg font-semibold mb-3">Questions et Réponses</h3>
-                                        <p className="text-gray-600">Section Q&A à venir</p>
-                                    </div>
-                                )}
-                            </div>
                         </div>
-                    </div>
+                        </div>
 
-                    {/* Sidebar - Course Curriculum */}
-                    <div className="lg:col-span-1">
-                        <CourseCurriculum
-                            courseId={courseId}
-                            currentLessonId={currentLesson?.id}
-                            onLessonSelect={setCurrentLesson}
-                            userProgress={userProgress}
-                            isPurchased={isPurchased}
-                        />
+                        {/* Sidebar - Course Curriculum */}
+                        <div className="lg:col-span-1">
+                            <CourseCurriculum
+                                courseId={courseId}
+                                currentLessonId={currentLesson?.id}
+                                onLessonSelect={setCurrentLesson}
+                                userProgress={userProgress}
+                                isPurchased={isPurchased}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    );
+            );
 }
