@@ -5,40 +5,54 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { BookOpen, Play, Clock, CheckCircle } from 'lucide-react';
+import courseService from '../services/course.service';
+import progressService from '../services/progress.service';
 
 export default function MyCourses() {
-  const { userProfile } = useAuth();
+  const { userProfile, currentUser } = useAuth();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate loading user's courses
-    setTimeout(() => {
-      setCourses([
-        {
-          id: '1',
-          title: 'Introduction à React',
-          instructor: 'Ahmed Ben Salem',
-          progress: 65,
-          totalLessons: 12,
-          completedLessons: 8,
-          lastAccessed: '2024-01-15',
-          image: '/assets/images/default-course.png'
-        },
-        {
-          id: '2',
-          title: 'JavaScript Avancé',
-          instructor: 'Fatma Aloui',
-          progress: 30,
-          totalLessons: 15,
-          completedLessons: 5,
-          lastAccessed: '2024-01-10',
-          image: '/assets/images/default-course.png'
-        }
-      ]);
+    if (currentUser && userProfile) {
+      loadMyCourses();
+    }
+  }, [currentUser, userProfile]);
+
+  const loadMyCourses = async () => {
+    setLoading(true);
+
+    // Get purchased course IDs from user profile
+    const purchasedCourseIds = userProfile?.purchasedCourses || [];
+
+    if (purchasedCourseIds.length === 0) {
       setLoading(false);
-    }, 1000);
-  }, []);
+      return;
+    }
+
+    // Fetch each purchased course
+    const coursesData = await Promise.all(
+      purchasedCourseIds.map(async (courseId) => {
+        const result = await courseService.getCourseById(courseId);
+        if (result.success) {
+          // Get progress for this course
+          const progressResult = await progressService.getCourseProgress(currentUser.uid, courseId);
+
+          return {
+            ...result.course,
+            progress: progressResult.completionPercentage || 0,
+            totalLessons: progressResult.totalLessons || 0,
+            completedLessons: progressResult.completedLessons || 0
+          };
+        }
+        return null;
+      })
+    );
+
+    // Filter out null values (courses that failed to load)
+    setCourses(coursesData.filter(course => course !== null));
+    setLoading(false);
+  };
 
   if (loading) {
     return (
@@ -61,64 +75,59 @@ export default function MyCourses() {
       {/* Courses */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {courses.length === 0 ? (
-          <div className="text-center py-12">
-            <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">Aucun cours</h3>
-            <p className="mt-1 text-sm text-gray-500">Commencez par explorer nos cours disponibles.</p>
-            <div className="mt-6">
-              <Link
-                to="/courses"
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
-              >
-                Explorer les cours
-              </Link>
-            </div>
+          <div className="text-center py-12 bg-white rounded-2xl shadow">
+            <BookOpen className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucun cours acheté</h3>
+            <p className="text-gray-600 mb-6">Commencez par explorer nos cours disponibles.</p>
+            <Link
+              to="/courses"
+              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-xl hover:shadow-xl transition font-medium"
+            >
+              <BookOpen className="w-5 h-5 mr-2" />
+              Explorer les cours
+            </Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {courses.map((course) => (
-              <div key={course.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-                <img 
-                  src={course.image} 
+              <div key={course.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition">
+                <img
+                  src={course.thumbnail || '/assets/images/default-course.png'}
                   alt={course.title}
                   className="w-full h-48 object-cover"
                 />
                 <div className="p-6">
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">{course.title}</h3>
-                  <p className="text-gray-600 mb-4">Par {course.instructor}</p>
-                  
+                  <p className="text-gray-600 mb-4">{course.category || 'General'}</p>
+
                   {/* Progress Bar */}
                   <div className="mb-4">
-                    <div className="flex justify-between text-sm text-gray-600 mb-1">
-                      <span>Progression</span>
-                      <span>{course.progress}%</span>
+                    <div className="flex justify-between text-sm text-gray-600 mb-2">
+                      <span className="font-medium">Progression</span>
+                      <span className="font-semibold text-green-600">{course.progress}%</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-green-500 to-blue-500 h-3 rounded-full transition-all duration-500"
                         style={{ width: `${course.progress}%` }}
                       ></div>
                     </div>
                   </div>
-                  
+
                   {/* Course Stats */}
-                  <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
+                  <div className="flex items-center justify-between text-sm text-gray-600 mb-6">
                     <div className="flex items-center">
                       <CheckCircle className="w-4 h-4 mr-1 text-green-500" />
                       <span>{course.completedLessons}/{course.totalLessons} leçons</span>
                     </div>
-                    <div className="flex items-center">
-                      <Clock className="w-4 h-4 mr-1" />
-                      <span>Dernière fois: {course.lastAccessed}</span>
-                    </div>
                   </div>
-                  
+
                   <Link
-                    to={`/course/${course.id}/learn`}
-                    className="w-full bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition flex items-center justify-center"
+                    to={`/course/${course.id}/view`}
+                    className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-3 px-4 rounded-xl hover:shadow-xl transition flex items-center justify-center font-medium"
                   >
-                    <Play className="w-4 h-4 mr-2" />
-                    Continuer
+                    <Play className="w-5 h-5 mr-2" />
+                    {course.progress === 0 ? 'Commencer' : 'Continuer'}
                   </Link>
                 </div>
               </div>
