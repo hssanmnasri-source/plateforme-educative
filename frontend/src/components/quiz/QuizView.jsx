@@ -2,13 +2,35 @@
 // ========================================
 // Interactive quiz component with scoring and feedback
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Award, RotateCcw } from 'lucide-react';
+import quizService from '../../services/quiz.service';
+import { useAuth } from '../../contexts/AuthContext';
 
-export default function QuizView({ quiz, onSubmit, previousResult }) {
+export default function QuizView({ quiz, courseId, onComplete }) {
+    const { currentUser } = useAuth();
     const [answers, setAnswers] = useState({});
     const [submitted, setSubmitted] = useState(false);
     const [results, setResults] = useState(null);
+    const [previousBestScore, setPreviousBestScore] = useState(null);
+
+    // Load previous best score on mount
+    useEffect(() => {
+        if (currentUser && quiz.id && courseId) {
+            loadPreviousScore();
+        }
+    }, [quiz.id, courseId, currentUser]);
+
+    const loadPreviousScore = async () => {
+        if (!currentUser) return;
+
+        const result = await quizService.getQuizResults(currentUser.uid, quiz.id);
+        if (result.success && result.results.length > 0) {
+            // Get best score
+            const bestScore = Math.max(...result.results.map(r => r.score));
+            setPreviousBestScore(bestScore);
+        }
+    };
 
     const handleAnswerSelect = (questionIndex, optionIndex) => {
         if (submitted) return; // No changes after submission
@@ -23,8 +45,36 @@ export default function QuizView({ quiz, onSubmit, previousResult }) {
         const answersArray = quiz.questions.map((_, index) => answers[index] ?? -1);
 
         setSubmitted(true);
-        const result = await onSubmit(answersArray);
-        setResults(result);
+
+        // Calculate score locally first
+        let correctCount = 0;
+        quiz.questions.forEach((question, index) => {
+            if (answersArray[index] === question.correctAnswer) {
+                correctCount++;
+            }
+        });
+
+        const score = Math.round((correctCount / quiz.questions.length) * 100);
+        const localResults = {
+            score,
+            correctCount,
+            totalQuestions: quiz.questions.length
+        };
+
+        setResults(localResults);
+
+        // Save to Firestore
+        if (currentUser && quiz.id && courseId) {
+            await quizService.submitQuizAnswers(
+                currentUser.uid,
+                quiz.id,
+                courseId,
+                answersArray
+            );
+        }
+
+        // Call completion callback
+        onComplete?.(localResults);
     };
 
     const handleRetry = () => {
@@ -67,9 +117,9 @@ export default function QuizView({ quiz, onSubmit, previousResult }) {
                 )}
                 <div className="flex items-center gap-4 text-sm text-gray-500">
                     <span>{quiz.questions.length} questions</span>
-                    {previousResult && !submitted && (
+                    {previousBestScore && !submitted && (
                         <span className="text-green-600 font-medium">
-                            Meilleur score: {previousResult.score}%
+                            Meilleur score: {previousBestScore}%
                         </span>
                     )}
                 </div>
@@ -102,12 +152,12 @@ export default function QuizView({ quiz, onSubmit, previousResult }) {
                                         onClick={() => handleAnswerSelect(qIndex, oIndex)}
                                         disabled={submitted}
                                         className={`w-full text-left p-4 rounded-xl border-2 transition-all ${isCorrect
-                                                ? 'border-green-500 bg-green-50'
-                                                : isWrong
-                                                    ? 'border-red-500 bg-red-50'
-                                                    : isSelected
-                                                        ? 'border-blue-500 bg-blue-50'
-                                                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                            ? 'border-green-500 bg-green-50'
+                                            : isWrong
+                                                ? 'border-red-500 bg-red-50'
+                                                : isSelected
+                                                    ? 'border-blue-500 bg-blue-50'
+                                                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                             } ${submitted ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                                     >
                                         <div className="flex items-center justify-between">
@@ -158,8 +208,8 @@ export default function QuizView({ quiz, onSubmit, previousResult }) {
                             onClick={handleSubmit}
                             disabled={!allAnswered}
                             className={`px-8 py-3 rounded-xl font-semibold transition ${allAnswered
-                                    ? 'bg-gradient-to-r from-green-500 to-blue-500 text-white hover:shadow-xl'
-                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                ? 'bg-gradient-to-r from-green-500 to-blue-500 text-white hover:shadow-xl'
+                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                 }`}
                         >
                             Soumettre le Quiz
