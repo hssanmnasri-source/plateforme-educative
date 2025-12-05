@@ -2,21 +2,52 @@
 // ========================================
 // Progressive exercise component with 3 difficulty levels
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronRight, CheckCircle, Lightbulb, Eye, EyeOff } from 'lucide-react';
+import exerciseService from '../../services/exercise.service';
+import { useAuth } from '../../contexts/AuthContext';
 
-export default function ExerciseView({ exercise, onComplete }) {
+export default function ExerciseView({ exercise, courseId, onComplete }) {
+    const { currentUser } = useAuth();
     const [currentLevel, setCurrentLevel] = useState(0);
     const [userCode, setUserCode] = useState(exercise.levels[0]?.starterCode || '');
     const [showSolution, setShowSolution] = useState(false);
     const [showHints, setShowHints] = useState(false);
     const [completedLevels, setCompletedLevels] = useState([]);
 
+    // Load existing progress on mount
+    useEffect(() => {
+        if (currentUser && exercise.id) {
+            loadProgress();
+        }
+    }, [exercise.id, currentUser]);
+
+    const loadProgress = async () => {
+        if (!currentUser) return;
+
+        const result = await exerciseService.getExerciseProgress(currentUser.uid, exercise.id);
+        if (result.success && result.progress.completedLevels) {
+            setCompletedLevels(result.progress.completedLevels);
+        }
+    };
+
     const level = exercise.levels[currentLevel];
 
-    const handleLevelComplete = () => {
+    const handleLevelComplete = async () => {
         if (!completedLevels.includes(currentLevel)) {
-            setCompletedLevels([...completedLevels, currentLevel]);
+            const newCompleted = [...completedLevels, currentLevel];
+            setCompletedLevels(newCompleted);
+
+            // Save to Firestore
+            if (currentUser && exercise.id && courseId) {
+                await exerciseService.trackLevelCompletion(
+                    currentUser.uid,
+                    exercise.id,
+                    courseId,
+                    currentLevel
+                );
+            }
+
             onComplete?.(currentLevel);
         }
 
@@ -68,10 +99,10 @@ export default function ExerciseView({ exercise, onComplete }) {
                         <div
                             key={index}
                             className={`flex-1 h-2 rounded-full transition ${index === currentLevel
-                                    ? 'bg-gradient-to-r from-green-500 to-blue-500'
-                                    : completedLevels.includes(index)
-                                        ? 'bg-green-500'
-                                        : 'bg-gray-200'
+                                ? 'bg-gradient-to-r from-green-500 to-blue-500'
+                                : completedLevels.includes(index)
+                                    ? 'bg-green-500'
+                                    : 'bg-gray-200'
                                 }`}
                         />
                     ))}
@@ -89,10 +120,10 @@ export default function ExerciseView({ exercise, onComplete }) {
                                 setShowHints(false);
                             }}
                             className={`px-4 py-2 rounded-xl border-2 font-medium text-sm transition ${index === currentLevel
-                                    ? getLevelColor(index)
-                                    : completedLevels.includes(index)
-                                        ? 'bg-green-50 text-green-600 border-green-200'
-                                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300'
+                                ? getLevelColor(index)
+                                : completedLevels.includes(index)
+                                    ? 'bg-green-50 text-green-600 border-green-200'
+                                    : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300'
                                 }`}
                         >
                             {completedLevels.includes(index) && <CheckCircle className="w-4 h-4 inline mr-1" />}
