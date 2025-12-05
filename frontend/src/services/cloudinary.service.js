@@ -65,6 +65,72 @@ class CloudinaryService {
     }
 
     /**
+     * Upload video to Cloudinary
+     * @param {File} file - Video file to upload
+     * @param {string} folder - Optional folder name in Cloudinary
+     * @param {function} onProgress - Optional progress callback
+     * @returns {Promise<{success: boolean, url?: string, duration?: number, error?: string}>}
+     */
+    async uploadVideo(file, folder = 'courses/videos', onProgress) {
+        try {
+            // Validate file type
+            if (!file.type.startsWith('video/')) {
+                throw new Error('File must be a video');
+            }
+
+            // Create form data
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', 'course_videos'); // Video-specific preset
+            formData.append('folder', folder);
+            formData.append('resource_type', 'video'); // Important for videos
+
+            console.log('📹 Uploading video to Cloudinary...');
+
+            // Upload to Cloudinary with XHR for progress tracking
+            const response = await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable && onProgress) {
+                        const percentComplete = Math.round((e.loaded / e.total) * 100);
+                        onProgress(percentComplete);
+                    }
+                });
+
+                xhr.addEventListener('load', () => {
+                    if (xhr.status === 200) {
+                        resolve(JSON.parse(xhr.responseText));
+                    } else {
+                        reject(new Error(xhr.statusText));
+                    }
+                });
+
+                xhr.addEventListener('error', () => reject(new Error('Upload failed')));
+
+                xhr.open('POST', `https://api.cloudinary.com/v1_1/${this.cloudName}/video/upload`);
+                xhr.send(formData);
+            });
+
+            console.log('✅ Video uploaded to Cloudinary:', response.secure_url);
+
+            return {
+                success: true,
+                url: response.secure_url,
+                publicId: response.public_id,
+                duration: response.duration, // Video duration in seconds
+                format: response.format
+            };
+        } catch (error) {
+            console.error('❌ Cloudinary video upload error:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    /**
      * Delete image from Cloudinary
      * @param {string} publicId - Cloudinary public ID
      * @returns {Promise<{success: boolean, error?: string}>}
