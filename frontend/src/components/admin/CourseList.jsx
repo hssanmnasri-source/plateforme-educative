@@ -3,10 +3,10 @@
 // Liste des cours avec recherche, filtres et actions
 
 import { useState, useEffect } from 'react';
-import { Edit, Trash2, Eye, Copy, Plus, Search, CheckCircle, Clock, Archive } from 'lucide-react';
+import { Edit, Trash2, Eye, Copy, Plus, Search, CheckCircle, Clock, Archive, Brain } from 'lucide-react';
 import courseService from '../../services/course.service';
 
-export default function CourseList({ onEdit, onAddNew }) {
+export default function CourseList({ onEdit, onAddNew, onManageQuizzes }) {
     const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -227,6 +227,13 @@ export default function CourseList({ onEdit, onAddNew }) {
                                                     <CheckCircle className="w-5 h-5" />
                                                 </button>
                                             )}
+                                            <button
+                                                onClick={() => onManageQuizzes?.(course)}
+                                                className="text-purple-600 hover:text-purple-900"
+                                                title="Gérer les Quiz"
+                                            >
+                                                <Brain className="w-5 h-5" />
+                                            </button>
                                             <button
                                                 onClick={() => onEdit(course)}
                                                 className="text-blue-600 hover:text-blue-900"
