@@ -5,9 +5,10 @@
 import { useState } from 'react';
 import {
     ChevronDown, ChevronRight, Edit2, Trash2, Plus,
-    Save, X, ChevronUp, Video, Clock, Globe
+    Save, X, ChevronUp, Video, Clock, Globe, Upload
 } from 'lucide-react';
 import EmptyState from '../common/EmptyState';
+import cloudinaryService from '../../services/cloudinary.service';
 
 export default function ModuleEditor({
     module,
@@ -23,9 +24,12 @@ export default function ModuleEditor({
 }) {
     const [editingLesson, setEditingLesson] = useState(null);
     const [moduleTitle, setModuleTitle] = useState(module.title);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [isUploading, setIsUploading] = useState(false);
     const [lessonForm, setLessonForm] = useState({
         title: '',
         videoUrl: '',
+        videoType: 'youtube', // 'youtube' or 'cloudinary'
         duration: '',
         description: '',
         isFree: false
@@ -245,17 +249,101 @@ export default function ModuleEditor({
                                                 </div>
                                             </div>
 
+                                            {/* Video Type Selector */}
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Video URL * (YouTube, Vimeo, or direct link)
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Video Source *
                                                 </label>
-                                                <input
-                                                    type="url"
-                                                    value={lesson.videoUrl}
-                                                    onChange={(e) => updateLesson(lesson.id, { videoUrl: e.target.value })}
-                                                    placeholder="https://www.youtube.com/watch?v=..."
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-500/20 outline-none"
-                                                />
+                                                <div className="flex gap-3 mb-3">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => updateLesson(lesson.id, { videoType: 'youtube' })}
+                                                        className={`flex-1 px-4 py-2 border-2 rounded-lg font-medium transition ${(lesson.videoType || 'youtube') === 'youtube'
+                                                                ? 'border-green-500 bg-green-50 text-green-700'
+                                                                : 'border-gray-300 text-gray-600 hover:border-gray-400'
+                                                            }`}
+                                                    >
+                                                        <Globe className="w-4 h-4 inline mr-2" />
+                                                        YouTube URL
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => updateLesson(lesson.id, { videoType: 'cloudinary' })}
+                                                        className={`flex-1 px-4 py-2 border-2 rounded-lg font-medium transition ${lesson.videoType === 'cloudinary'
+                                                                ? 'border-green-500 bg-green-50 text-green-700'
+                                                                : 'border-gray-300 text-gray-600 hover:border-gray-400'
+                                                            }`}
+                                                    >
+                                                        <Upload className="w-4 h-4 inline mr-2" />
+                                                        Upload Video
+                                                    </button>
+                                                </div>
+
+                                                {(lesson.videoType || 'youtube') === 'youtube' ? (
+                                                    /* YouTube URL Input */
+                                                    <input
+                                                        type="url"
+                                                        value={lesson.videoUrl}
+                                                        onChange={(e) => updateLesson(lesson.id, { videoUrl: e.target.value })}
+                                                        placeholder="https://www.youtube.com/watch?v=..."
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-500/20 outline-none"
+                                                    />
+                                                ) : (
+                                                    /* Cloudinary Video Upload */
+                                                    <div>
+                                                        <input
+                                                            type="file"
+                                                            accept="video/*"
+                                                            onChange={async (e) => {
+                                                                const file = e.target.files[0];
+                                                                if (!file) return;
+
+                                                                setIsUploading(true);
+                                                                setUploadProgress(0);
+
+                                                                const result = await cloudinaryService.uploadVideo(
+                                                                    file,
+                                                                    'courses/videos',
+                                                                    (progress) => setUploadProgress(progress)
+                                                                );
+
+                                                                setIsUploading(false);
+
+                                                                if (result.success) {
+                                                                    updateLesson(lesson.id, {
+                                                                        videoUrl: result.url,
+                                                                        duration: Math.ceil(result.duration / 60) || lesson.duration
+                                                                    });
+                                                                } else {
+                                                                    alert('Upload failed: ' + result.error);
+                                                                }
+                                                            }}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-500/20 outline-none file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                                                            disabled={isUploading}
+                                                        />
+
+                                                        {isUploading && (
+                                                            <div className="mt-2">
+                                                                <div className="flex justify-between text-sm text-gray-600 mb-1">
+                                                                    <span>Uploading...</span>
+                                                                    <span>{uploadProgress}%</span>
+                                                                </div>
+                                                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                                                    <div
+                                                                        className="bg-green-500 h-2 rounded-full transition-all"
+                                                                        style={{ width: `${uploadProgress}%` }}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {lesson.videoUrl && !isUploading && (
+                                                            <p className="mt-2 text-sm text-green-600">
+                                                                ✓ Video uploaded successfully
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
 
                                             <div>
