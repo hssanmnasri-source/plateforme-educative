@@ -3,10 +3,12 @@
 // Liste des cours avec recherche, filtres et actions
 
 import { useState, useEffect } from 'react';
-import { Edit, Trash2, Eye, Copy, Plus, Search, CheckCircle, Clock, Archive } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Edit, Trash2, Eye, Copy, Plus, Search, CheckCircle, Clock, Archive, Brain, Code } from 'lucide-react';
 import courseService from '../../services/course.service';
 
 export default function CourseList({ onEdit, onAddNew }) {
+    const navigate = useNavigate();
     const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -227,6 +229,20 @@ export default function CourseList({ onEdit, onAddNew }) {
                                                     <CheckCircle className="w-5 h-5" />
                                                 </button>
                                             )}
+                                            <button
+                                                onClick={() => navigate(`/admin/courses/${course.id}?tab=quizzes`)}
+                                                className="text-purple-600 hover:text-purple-900"
+                                                title="Gérer les Quiz"
+                                            >
+                                                <Brain className="w-5 h-5" />
+                                            </button>
+                                            <button
+                                                onClick={() => navigate(`/admin/courses/${course.id}?tab=exercises`)}
+                                                className="text-orange-600 hover:text-orange-900"
+                                                title="Gérer les Exercices"
+                                            >
+                                                <Code className="w-5 h-5" />
+                                            </button>
                                             <button
                                                 onClick={() => onEdit(course)}
                                                 className="text-blue-600 hover:text-blue-900"
