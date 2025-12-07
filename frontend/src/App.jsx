@@ -14,6 +14,7 @@ import MyCourses from './pages/MyCourses';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentCancel from './pages/PaymentCancel';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import CourseManagement from './pages/admin/CourseManagement';
 import { ADMIN_PATH, DASHBOARD_PATH } from './config/routes';
 
 function App() {
@@ -60,6 +61,14 @@ function App() {
             element={
               <ProtectedRoute adminOnly={true}>
                 <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/courses/:courseId"
+            element={
+              <ProtectedRoute adminOnly={true}>
+                <CourseManagement />
               </ProtectedRoute>
             }
           />

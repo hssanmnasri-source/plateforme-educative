@@ -2,6 +2,7 @@
 // ========================================
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Users, BookOpen, BarChart3, Settings } from 'lucide-react';
 import AdminAdd from '../../components/admin/AdminAdd';
@@ -11,6 +12,7 @@ import CourseForm from '../../components/admin/CourseForm';
 import UserList from '../../components/admin/UserList';
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const { userProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [showCourseForm, setShowCourseForm] = useState(false);
@@ -91,8 +93,7 @@ export default function AdminDashboard() {
             ) : (
               <CourseList
                 onEdit={(course) => {
-                  setEditingCourse(course);
-                  setShowCourseForm(true);
+                  navigate(`/admin/courses/${course.id}`);
                 }}
                 onAddNew={() => {
                   setEditingCourse(null);
