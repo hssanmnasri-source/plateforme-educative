@@ -14,7 +14,6 @@ import MyCourses from './pages/MyCourses';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentCancel from './pages/PaymentCancel';
 import AdminDashboard from './pages/admin/AdminDashboard';
-import DemoCourse from './pages/DemoCourse';
 import { ADMIN_PATH, DASHBOARD_PATH } from './config/routes';
 
 function App() {
@@ -34,9 +33,6 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/courses" element={<Courses />} />
           <Route path="/courses/:id" element={<CourseDetail />} />
-
-          {/* Demo page for quiz/exercise */}
-          <Route path="/demo" element={<DemoCourse />} />
 
           {/* Paiement */}
           <Route path="/payment/success" element={<PaymentSuccess />} />
