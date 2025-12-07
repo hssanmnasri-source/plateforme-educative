@@ -9,6 +9,8 @@ import { useAuth } from '../contexts/AuthContext';
 import courseService from '../services/course.service';
 import lessonService from '../services/lesson.service';
 import progressService from '../services/progress.service';
+import quizService from '../services/quiz.service';
+import exerciseService from '../services/exercise.service';
 import LessonPlayer from '../components/lessons/LessonPlayer';
 import CourseCurriculum from '../components/courses/CourseCurriculum';
 import ContentView from '../components/content/ContentView';
@@ -25,6 +27,8 @@ export default function CourseViewer() {
     const [loading, setLoading] = useState(true);
     const [isPurchased, setIsPurchased] = useState(false);
     const [allLessons, setAllLessons] = useState([]);
+    const [quizzes, setQuizzes] = useState([]);
+    const [exercises, setExercises] = useState([]);
 
     useEffect(() => {
         loadCourseData();
@@ -84,6 +88,18 @@ export default function CourseViewer() {
                     );
                     setCurrentLesson(firstIncomplete || allLessonsArray[0]);
                 }
+            }
+
+            // Load quizzes
+            const quizzesResult = await quizService.getQuizzesByCourse(courseId);
+            if (quizzesResult.success) {
+                setQuizzes(quizzesResult.quizzes);
+            }
+
+            // Load exercises
+            const exercisesResult = await exerciseService.getExercisesByCourse(courseId);
+            if (exercisesResult.success) {
+                setExercises(exercisesResult.exercises);
             }
 
             console.log('✅ Course data loaded successfully');
@@ -250,23 +266,39 @@ export default function CourseViewer() {
 
                                 {activeTab === 'quiz' && (
                                     <div className="-m-6">
-                                        <ContentView
-                                            content={demoReactQuiz}
-                                            contentType="quiz"
-                                            onComplete={() => console.log('Quiz completed')}
-                                            onNext={handleNextLesson}
-                                        />
+                                        {quizzes.length > 0 ? (
+                                            <ContentView
+                                                content={quizzes[0]}
+                                                contentType="quiz"
+                                                courseId={courseId}
+                                                onComplete={() => console.log('Quiz completed')}
+                                                onNext={handleNextLesson}
+                                            />
+                                        ) : (
+                                            <div className="text-center py-12">
+                                                <Brain className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                                                <p className="text-gray-600">Aucun quiz disponible pour ce cours</p>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
                                 {activeTab === 'exercise' && (
                                     <div className="-m-6">
-                                        <ContentView
-                                            content={demoReactExercise}
-                                            contentType="exercise"
-                                            onComplete={() => console.log('Exercise completed')}
-                                            onNext={handleNextLesson}
-                                        />
+                                        {exercises.length > 0 ? (
+                                            <ContentView
+                                                content={exercises[0]}
+                                                contentType="exercise"
+                                                courseId={courseId}
+                                                onComplete={() => console.log('Exercise completed')}
+                                                onNext={handleNextLesson}
+                                            />
+                                        ) : (
+                                            <div className="text-center py-12">
+                                                <Code className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                                                <p className="text-gray-600">Aucun exercice disponible pour ce cours</p>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
