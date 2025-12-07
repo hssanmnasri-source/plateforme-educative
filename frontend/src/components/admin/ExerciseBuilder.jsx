@@ -61,7 +61,7 @@ export default function ExerciseBuilder({ courseId, exercise: existingExercise, 
         setExercise({ ...exercise, levels: updatedLevels });
     };
 
-    const deleteHint = (level Index, hintIndex) => {
+    const deleteHint = (levelIndex, hintIndex) => {
         const updatedLevels = [...exercise.levels];
         updatedLevels[levelIndex].hints.splice(hintIndex, 1);
         setExercise({ ...exercise, levels: updatedLevels });
