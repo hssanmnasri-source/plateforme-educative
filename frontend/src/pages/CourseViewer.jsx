@@ -9,11 +9,10 @@ import { useAuth } from '../contexts/AuthContext';
 import courseService from '../services/course.service';
 import lessonService from '../services/lesson.service';
 import progressService from '../services/progress.service';
-import quizService from '../services/quiz.service';
-import exerciseService from '../services/exercise.service';
 import LessonPlayer from '../components/lessons/LessonPlayer';
 import CourseCurriculum from '../components/courses/CourseCurriculum';
 import ContentView from '../components/content/ContentView';
+import { demoReactQuiz, demoReactExercise } from '../data/demoContent';
 
 export default function CourseViewer() {
     const { courseId } = useParams();
@@ -27,8 +26,6 @@ export default function CourseViewer() {
     const [loading, setLoading] = useState(true);
     const [isPurchased, setIsPurchased] = useState(false);
     const [allLessons, setAllLessons] = useState([]);
-    const [quizzes, setQuizzes] = useState([]);
-    const [exercises, setExercises] = useState([]);
 
     useEffect(() => {
         loadCourseData();
@@ -82,23 +79,12 @@ export default function CourseViewer() {
 
                 // Set first lesson as current if none selected
                 if (allLessonsArray.length > 0 && !currentLesson) {
+                    // Start with first uncompleted lesson or first lesson
                     const firstIncomplete = allLessonsArray.find(l =>
                         !progressService.isLessonCompleted(l.id, progressResult.progress.completedLessons || [])
                     );
                     setCurrentLesson(firstIncomplete || allLessonsArray[0]);
                 }
-            }
-
-            // Load quizzes for this course
-            const quizzesResult = await quizService.getQuizzesByCourse(courseId);
-            if (quizzesResult.success) {
-                setQuizzes(quizzesResult.quizzes);
-            }
-
-            // Load exercises for this course
-            const exercisesResult = await exerciseService.getExercisesByCourse(courseId);
-            if (exercisesResult.success) {
-                setExercises(exercisesResult.exercises);
             }
 
             console.log('✅ Course data loaded successfully');
@@ -265,43 +251,23 @@ export default function CourseViewer() {
 
                                 {activeTab === 'quiz' && (
                                     <div className="-m-6">
-                                        {quizzes.length > 0 ? (
-                                            quizzes.map(quiz => (
-                                                <ContentView
-                                                    key={quiz.id}
-                                                    content={quiz}
-                                                    contentType="quiz"
-                                                    courseId={courseId}
-                                                    onComplete={() => console.log('Quiz completed')}
-                                                />
-                                            ))
-                                        ) : (
-                                            <div className="p-12 text-center text-gray-500">
-                                                <p className="text-lg">Aucun quiz disponible pour ce cours</p>
-                                                <p className="text-sm mt-2">L'instructeur n'a pas encore créé de quiz</p>
-                                            </div>
-                                        )}
+                                        <ContentView
+                                            content={demoReactQuiz}
+                                            contentType="quiz"
+                                            onComplete={() => console.log('Quiz completed')}
+                                            onNext={handleNextLesson}
+                                        />
                                     </div>
                                 )}
 
                                 {activeTab === 'exercise' && (
                                     <div className="-m-6">
-                                        {exercises.length > 0 ? (
-                                            exercises.map(exercise => (
-                                                <ContentView
-                                                    key={exercise.id}
-                                                    content={exercise}
-                                                    contentType="exercise"
-                                                    courseId={courseId}
-                                                    onComplete={() => console.log('Exercise completed')}
-                                                />
-                                            ))
-                                        ) : (
-                                            <div className="p-12 text-center text-gray-500">
-                                                <p className="text-lg">Aucun exercice disponible pour ce cours</p>
-                                                <p className="text-sm mt-2">L'instructeur n'a pas encore créé d'exercices</p>
-                                            </div>
-                                        )}
+                                        <ContentView
+                                            content={demoReactExercise}
+                                            contentType="exercise"
+                                            onComplete={() => console.log('Exercise completed')}
+                                            onNext={handleNextLesson}
+                                        />
                                     </div>
                                 )}
 

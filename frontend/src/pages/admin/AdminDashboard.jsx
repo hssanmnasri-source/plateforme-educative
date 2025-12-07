@@ -9,7 +9,6 @@ import NotificationList from '../../components/notifications/NotificationList';
 import CourseList from '../../components/admin/CourseList';
 import CourseForm from '../../components/admin/CourseForm';
 import UserList from '../../components/admin/UserList';
-import QuizManagement from '../../components/admin/QuizManagement';
 
 export default function AdminDashboard() {
   const { userProfile } = useAuth();
@@ -17,8 +16,6 @@ export default function AdminDashboard() {
   const [showCourseForm, setShowCourseForm] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
   const [notifications, setNotifications] = useState([]);
-  const [showQuizManagement, setShowQuizManagement] = useState(false);
-  const [managingQuizForCourse, setManagingQuizForCourse] = useState(null);
 
   const tabs = [
     { id: 'overview', name: 'Vue d\'ensemble', icon: BarChart3 },
@@ -79,16 +76,7 @@ export default function AdminDashboard() {
       case 'courses':
         return (
           <div className="space-y-6">
-            {showQuizManagement ? (
-              <QuizManagement
-                courseId={managingQuizForCourse?.id}
-                courseName={managingQuizForCourse?.title}
-                onBack={() => {
-                  setShowQuizManagement(false);
-                  setManagingQuizForCourse(null);
-                }}
-              />
-            ) : showCourseForm ? (
+            {showCourseForm ? (
               <CourseForm
                 courseId={editingCourse?.id}
                 onSave={() => {
@@ -109,10 +97,6 @@ export default function AdminDashboard() {
                 onAddNew={() => {
                   setEditingCourse(null);
                   setShowCourseForm(true);
-                }}
-                onManageQuizzes={(course) => {
-                  setManagingQuizForCourse(course);
-                  setShowQuizManagement(true);
                 }}
               />
             )}
