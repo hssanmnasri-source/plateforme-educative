@@ -1,15 +1,4 @@
-// 📁 src/components/common/EmptyState.jsx
-// ========================================
-// Empty state component with call-to-action
-
-import { LucideIcon } from 'lucide-react';
-
-export default function EmptyState({
-    icon: Icon,
-    title,
-    description,
-    actionLabel,
-    onAction,
+onAction,
     actionIcon: ActionIcon
 }) {
     return (
