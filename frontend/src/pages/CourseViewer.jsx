@@ -12,7 +12,6 @@ import progressService from '../services/progress.service';
 import LessonPlayer from '../components/lessons/LessonPlayer';
 import CourseCurriculum from '../components/courses/CourseCurriculum';
 import ContentView from '../components/content/ContentView';
-import { demoReactQuiz, demoReactExercise } from '../data/demoContent';
 
 export default function CourseViewer() {
     const { courseId } = useParams();
