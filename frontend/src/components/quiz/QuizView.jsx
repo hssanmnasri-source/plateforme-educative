@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Award, RotateCcw } from 'lucide-react';
 import quizService from '../../services/quiz.service';
+import progressService from '../../services/progress.service';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function QuizView({ quiz, courseId, onComplete }) {
@@ -65,11 +66,20 @@ export default function QuizView({ quiz, courseId, onComplete }) {
 
         // Save to Firestore
         if (currentUser && quiz.id && courseId) {
+            // Save quiz submission
             await quizService.submitQuizAnswers(
                 currentUser.uid,
                 quiz.id,
                 courseId,
                 answersArray
+            );
+
+            // Mark quiz as completed in progress
+            await progressService.markQuizCompleted(
+                currentUser.uid,
+                courseId,
+                quiz.id,
+                score
             );
         }
 

@@ -92,6 +92,88 @@ class ProgressService {
     }
 
     /**
+     * Marquer un quiz comme complété avec score
+     */
+    async markQuizCompleted(userId, courseId, quizId, score) {
+        try {
+            const progressRef = doc(db, 'progress', `${userId}_${courseId}`);
+            const progressDoc = await getDoc(progressRef);
+
+            const quizScores = progressDoc.exists()
+                ? (progressDoc.data().quizScores || {})
+                : {};
+
+            // Update score if better than previous
+            if (!quizScores[quizId] || score > quizScores[quizId]) {
+                quizScores[quizId] = score;
+            }
+
+            if (progressDoc.exists()) {
+                await updateDoc(progressRef, {
+                    completedQuizzes: arrayUnion(quizId),
+                    quizScores: quizScores,
+                    lastAccessed: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+            } else {
+                await setDoc(progressRef, {
+                    userId,
+                    courseId,
+                    completedLessons: [],
+                    completedQuizzes: [quizId],
+                    completedExercises: [],
+                    quizScores: quizScores,
+                    startedAt: serverTimestamp(),
+                    lastAccessed: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+            }
+
+            console.log('✅ Quiz marked complete:', { quizId, score });
+            return { success: true };
+        } catch (error) {
+            console.error('❌ Error marking quiz complete:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Marquer un exercice comme complété
+     */
+    async markExerciseCompleted(userId, courseId, exerciseId) {
+        try {
+            const progressRef = doc(db, 'progress', `${userId}_${courseId}`);
+            const progressDoc = await getDoc(progressRef);
+
+            if (progressDoc.exists()) {
+                await updateDoc(progressRef, {
+                    completedExercises: arrayUnion(exerciseId),
+                    lastAccessed: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+            } else {
+                await setDoc(progressRef, {
+                    userId,
+                    courseId,
+                    completedLessons: [],
+                    completedQuizzes: [],
+                    completedExercises: [exerciseId],
+                    quizScores: {},
+                    startedAt: serverTimestamp(),
+                    lastAccessed: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+            }
+
+            console.log('✅ Exercise marked complete:', exerciseId);
+            return { success: true };
+        } catch (error) {
+            console.error('❌ Error marking exercise complete:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
      * Vérifier si une leçon est complétée
      */
     isLessonCompleted(lessonId, completedLessons = []) {
