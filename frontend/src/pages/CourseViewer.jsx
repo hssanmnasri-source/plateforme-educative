@@ -11,9 +11,11 @@ import lessonService from '../services/lesson.service';
 import progressService from '../services/progress.service';
 import quizService from '../services/quiz.service';
 import exerciseService from '../services/exercise.service';
+import certificateService from '../services/certificate.service';
 import LessonPlayer from '../components/lessons/LessonPlayer';
 import CourseCurriculum from '../components/courses/CourseCurriculum';
 import ContentView from '../components/content/ContentView';
+import CertificateButton from '../components/certificates/CertificateButton';
 
 export default function CourseViewer() {
     const { courseId } = useParams();
@@ -29,6 +31,7 @@ export default function CourseViewer() {
     const [allLessons, setAllLessons] = useState([]);
     const [quizzes, setQuizzes] = useState([]);
     const [exercises, setExercises] = useState([]);
+    const [isCourseCompleted, setIsCourseCompleted] = useState(false);
 
     useEffect(() => {
         loadCourseData();
@@ -100,6 +103,12 @@ export default function CourseViewer() {
             const exercisesResult = await exerciseService.getExercisesByCourse(courseId);
             if (exercisesResult.success) {
                 setExercises(exercisesResult.exercises);
+            }
+
+            // Check if course is completed (for certificate)
+            const completionCheck = await certificateService.checkCourseCompletion(currentUser.uid, courseId);
+            if (completionCheck.success) {
+                setIsCourseCompleted(completionCheck.completed);
             }
 
             console.log('✅ Course data loaded successfully');
@@ -194,6 +203,15 @@ export default function CourseViewer() {
                             Retour à mes cours
                         </button>
                         <div className="flex items-center space-x-4">
+                            {/* Certificate Button */}
+                            {isCourseCompleted && (
+                                <CertificateButton
+                                    courseId={courseId}
+                                    courseName={course?.title}
+                                    isCompleted={isCourseCompleted}
+                                />
+                            )}
+
                             <div className="text-sm text-gray-600">
                                 Progression: {calculateProgress()}%
                             </div>
