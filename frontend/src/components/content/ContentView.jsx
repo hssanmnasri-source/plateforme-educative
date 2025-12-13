@@ -8,7 +8,7 @@ import QuizView from '../quiz/QuizView';
 import ExerciseView from '../exercises/ExerciseView';
 import { BookOpen } from 'lucide-react';
 
-export default function ContentView({ content, contentType, onComplete, onNext }) {
+export default function ContentView({ content, contentType, courseId, onComplete, onNext }) {
     const [quizResult, setQuizResult] = useState(null);
 
     const handleQuizSubmit = async (answers) => {
@@ -88,6 +88,7 @@ export default function ContentView({ content, contentType, onComplete, onNext }
             return (
                 <QuizView
                     quiz={content}
+                    courseId={courseId}
                     onSubmit={handleQuizSubmit}
                     previousResult={quizResult}
                 />
@@ -97,6 +98,7 @@ export default function ContentView({ content, contentType, onComplete, onNext }
             return (
                 <ExerciseView
                     exercise={content}
+                    courseId={courseId}
                     onComplete={handleExerciseComplete}
                 />
             );

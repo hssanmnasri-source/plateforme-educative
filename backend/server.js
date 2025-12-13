@@ -75,7 +75,7 @@ try {
   if (!serviceAccount.project_id || !serviceAccount.client_email || !serviceAccount.private_key) {
     throw new Error('Service account missing required fields: project_id, client_email, or private_key');
   }
-  
+
   // Check if private key looks valid (basic checks only)
   if (!serviceAccount.private_key.includes('BEGIN PRIVATE KEY') || !serviceAccount.private_key.includes('END PRIVATE KEY')) {
     throw new Error('Private key format appears invalid - missing BEGIN/END markers');
@@ -87,7 +87,7 @@ try {
   console.log('✅ Firebase Admin initialized successfully');
   console.log('   Project:', serviceAccount.project_id);
   console.log('   Client Email:', serviceAccount.client_email);
-  
+
 } catch (error) {
   console.error('❌ Failed to initialize/verify Firebase Admin:', error.message);
   console.error('   Error code:', error.code);
@@ -199,7 +199,7 @@ app.options('/paymee-webhook', (req, res) => {
 app.post('/paymee-webhook', async (req, res) => {
   // Répondre immédiatement à Paymee pour éviter les timeouts (502 Bad Gateway)
   res.status(200).json({ received: true, message: 'Webhook received' });
-  
+
   // Traiter le webhook de manière asynchrone (sans bloquer la réponse)
   (async () => {
     try {
@@ -362,7 +362,7 @@ app.get('/health', async (req, res) => {
     // Test Firebase connection
     const testRef = db.collection('_health').doc('test');
     await testRef.get();
-    
+
     res.json({
       status: 'OK',
       timestamp: new Date().toISOString(),
@@ -389,7 +389,7 @@ app.get('/diagnostics', (req, res) => {
   const envVar = process.env.FIREBASE_SERVICE_ACCOUNT || '';
   let parseError = null;
   let parsedData = null;
-  
+
   if (envVar) {
     try {
       parsedData = JSON.parse(envVar);
@@ -397,7 +397,7 @@ app.get('/diagnostics', (req, res) => {
       parseError = e.message;
     }
   }
-  
+
   res.json({
     hasFirebaseEnvVar: !!process.env.FIREBASE_SERVICE_ACCOUNT,
     envVarLength: envVar.length,
@@ -486,10 +486,10 @@ app.post('/sync-payment', async (req, res) => {
     }
 
     const paymentData = paymentDoc.data();
-    console.log('📄 Données du paiement:', { 
-      status: paymentData.status, 
-      userId: paymentData.userId, 
-      courseId: paymentData.courseId 
+    console.log('📄 Données du paiement:', {
+      status: paymentData.status,
+      userId: paymentData.userId,
+      courseId: paymentData.courseId
     });
 
     // Vérifier que les données nécessaires sont présentes
@@ -516,7 +516,7 @@ app.post('/sync-payment', async (req, res) => {
         console.log('🔍 Vérification du statut avec Paymee...');
         const paymeeApiUrl = process.env.PAYMEE_API_URL || 'https://sandbox.paymee.tn/api/v2';
         const paymeeToken = process.env.PAYMEE_SECRET_KEY;
-        
+
         const paymeeResponse = await fetch(`${paymeeApiUrl}/payments/check`, {
           method: 'POST',
           headers: {
@@ -529,11 +529,11 @@ app.post('/sync-payment', async (req, res) => {
         if (paymeeResponse.ok) {
           const paymeeData = await paymeeResponse.json();
           console.log('📊 Statut Paymee:', paymeeData);
-          
+
           if (paymeeData.status && paymeeData.data) {
             paymeeStatus = paymeeData.data.status;
             console.log('✅ Statut Paymee récupéré:', paymeeStatus);
-            
+
             // Si Paymee dit que le paiement a échoué, ne pas le marquer comme complété
             if (paymeeStatus === 'failed' || paymeeStatus === 'cancelled') {
               console.log('❌ Paymee indique que le paiement a échoué');
@@ -542,20 +542,20 @@ app.post('/sync-payment', async (req, res) => {
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
                 synced: true
               });
-              return res.json({ 
-                success: false, 
+              return res.json({
+                success: false,
                 message: 'Le paiement a échoué selon Paymee',
-                paymeeStatus 
+                paymeeStatus
               });
             }
-            
+
             // Si Paymee dit que c'est en attente, ne pas le marquer comme complété
             if (paymeeStatus === 'pending') {
               console.log('⏳ Paymee indique que le paiement est en attente');
-              return res.json({ 
-                success: false, 
+              return res.json({
+                success: false,
                 message: 'Le paiement est toujours en attente',
-                paymeeStatus 
+                paymeeStatus
               });
             }
           }
@@ -620,75 +620,75 @@ app.post('/sync-payment', async (req, res) => {
     console.log('✅ Paiement synchronisé avec succès');
 
     let recipientEmail = 'unknown@example.com';
-    let courseTitle = 'votre cours';
-    
-    try {
-      // 1. Récupérer l'email de l'utilisateur
-      const userSnapshot = await db.collection('users').doc(paymentData.userId).get();
-      if (userSnapshot.exists && userSnapshot.data()?.email) {
-        recipientEmail = userSnapshot.data().email;
-        console.log(`📧 Email utilisateur trouvé: ${recipientEmail}`);
-      } else {
-        console.warn(`⚠️ Email manquant ou utilisateur introuvable pour userId: ${paymentData.userId}`);
-        // Optionnel: Si l'email est absolument requis, vous pourriez ici décider de NE PAS envoyer l'email.
-      }
+    let courseTitle = 'votre cours';
 
-      // 2. Récupérer le titre du cours
-      const courseSnapshot = await db.collection('courses').doc(paymentData.courseId).get();
-      if (courseSnapshot.exists && courseSnapshot.data()?.title) {
-        courseTitle = courseSnapshot.data().title;
-        console.log(`📚 Titre du cours trouvé: ${courseTitle}`);
-      } else {
-        console.warn(`⚠️ Titre manquant ou cours introuvable pour courseId: ${paymentData.courseId}`);
-      }
-    } catch (dataFetchError) {
-      console.error('❌ Erreur lors de la récupération des données pour l\'email:', dataFetchError.message);
-      // Continuer avec les valeurs par défaut
-    }
+    try {
+      // 1. Récupérer l'email de l'utilisateur
+      const userSnapshot = await db.collection('users').doc(paymentData.userId).get();
+      if (userSnapshot.exists && userSnapshot.data()?.email) {
+        recipientEmail = userSnapshot.data().email;
+        console.log(`📧 Email utilisateur trouvé: ${recipientEmail}`);
+      } else {
+        console.warn(`⚠️ Email manquant ou utilisateur introuvable pour userId: ${paymentData.userId}`);
+        // Optionnel: Si l'email est absolument requis, vous pourriez ici décider de NE PAS envoyer l'email.
+      }
 
-//  const mailOptions = {
-//         from: 'hssan.mnasri@gmail.com', // Sender address
-//         to: 'hssan.mnasri@gmail.com', // List of receivers
-//         subject: 'Test Email from Express & Nodemailer', // Subject line
-//         text: 'Hello world! This is a test email sent from an Express server using Nodemailer.', // Plain text body
-//         html: '<b>Hello world!</b><p>This is a test email sent from an Express server using Nodemailer.</p>', // HTML body
-//     };
-//     sendEmail(mailOptions.to, mailOptions.subject, mailOptions.html)
+      // 2. Récupérer le titre du cours
+      const courseSnapshot = await db.collection('courses').doc(paymentData.courseId).get();
+      if (courseSnapshot.exists && courseSnapshot.data()?.title) {
+        courseTitle = courseSnapshot.data().title;
+        console.log(`📚 Titre du cours trouvé: ${courseTitle}`);
+      } else {
+        console.warn(`⚠️ Titre manquant ou cours introuvable pour courseId: ${paymentData.courseId}`);
+      }
+    } catch (dataFetchError) {
+      console.error('❌ Erreur lors de la récupération des données pour l\'email:', dataFetchError.message);
+      // Continuer avec les valeurs par défaut
+    }
 
-    const emailSubject = `🎉 Paiement confirmé pour le cours: ${courseTitle}`;
-    const emailBody = `
-        <h1>Bonjour,</h1>
-        <p>Félicitations ! Votre paiement a été confirmé avec succès.</p>
-        <p>Vous avez maintenant accès au cours <strong>${courseTitle}</strong>.</p>
-        <p>Cliquez ici pour commencer : <a href="[Your App Link]">Accéder à mon cours</a></p>
-        <p>Référence du paiement: ${paymentId}</p>
-        <p>L'équipe My Company.</p>
-    `;
+    //  const mailOptions = {
+    //         from: 'hssan.mnasri@gmail.com', // Sender address
+    //         to: 'hssan.mnasri@gmail.com', // List of receivers
+    //         subject: 'Test Email from Express & Nodemailer', // Subject line
+    //         text: 'Hello world! This is a test email sent from an Express server using Nodemailer.', // Plain text body
+    //         html: '<b>Hello world!</b><p>This is a test email sent from an Express server using Nodemailer.</p>', // HTML body
+    //     };
+    //     sendEmail(mailOptions.to, mailOptions.subject, mailOptions.html)
 
-    // 3. Envoyer l'email
-    try {
-      // Assurez-vous que l'email est différent de la valeur par défaut 'unknown@example.com' avant d'envoyer
-      if (recipientEmail !== 'unknown@example.com') {
-        await sendEmail(recipientEmail, emailSubject, emailBody); 
-        console.log('✅ Email de confirmation envoyé');
-      } else {
-        console.warn('⚠️ Email non envoyé car l\'adresse du destinataire est manquante ou inconnue.');
-      }
-    } catch (emailError) {
-      console.warn('⚠️ Erreur lors de l\'envoi de l\'email (non bloquant):', emailError.message);
-    }
-    // ========================================
+    // 3. Importer le template (si pas déjà importé en haut, mais on peut le faire ici pour l'instant ou déplacer l'import)
+    const { getPaymentSuccessTemplate } = require('./utils/emailTemplates');
 
-    res.json({ 
-      success: true, 
+    const emailSubject = `🎉 Paiement confirmé pour le cours: ${courseTitle}`;
+    // Lien vers "Mes Cours" sur le frontend
+    const courseLink = 'https://e-learing-58b34.web.app/my-courses';
+
+    // Générer le HTML avec le nouveau template
+    const emailBody = getPaymentSuccessTemplate(courseTitle, paymentId, courseLink);
+
+    // 3. Envoyer l'email
+    try {
+      // Assurez-vous que l'email est différent de la valeur par défaut 'unknown@example.com' avant d'envoyer
+      if (recipientEmail !== 'unknown@example.com') {
+        await sendEmail(recipientEmail, emailSubject, emailBody);
+        console.log('✅ Email de confirmation envoyé');
+      } else {
+        console.warn('⚠️ Email non envoyé car l\'adresse du destinataire est manquante ou inconnue.');
+      }
+    } catch (emailError) {
+      console.warn('⚠️ Erreur lors de l\'envoi de l\'email (non bloquant):', emailError.message);
+    }
+    // ========================================
+
+    res.json({
+      success: true,
       message: 'Paiement synchronisé',
-      paymentId 
+      paymentId
     });
   } catch (error) {
     console.error('💥 Erreur synchronisation:', error);
     console.error('   Message:', error.message);
     console.error('   Stack:', error.stack);
-    res.status(500).json({ 
+    res.status(500).json({
       error: error.message || 'Erreur lors de la synchronisation',
       type: error.name || 'UnknownError'
     });
@@ -740,7 +740,7 @@ app.post('/complete-payment', async (req, res) => {
     // Envoyer notification
     const userSnapshot = await userRef.get();
     const userData = userSnapshot.exists ? userSnapshot.data() : {};
-    
+
     await notificationService.sendToUser(paymentData.userId, {
       title: '🎉 Paiement confirmé !',
       body: `Vous avez maintenant accès à votre cours.`,
@@ -754,10 +754,10 @@ app.post('/complete-payment', async (req, res) => {
 
     console.log('✅ Paiement marqué comme complété manuellement');
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Paiement marqué comme complété',
-      paymentId 
+      paymentId
     });
   } catch (error) {
     console.error('💥 Erreur completion manuelle:', error);
@@ -768,16 +768,16 @@ app.post('/complete-payment', async (req, res) => {
 
 
 app.get('/send-email', (req, res) => {
-    const mailOptions = {
-        from: 'hssan.mnasri@gmail.com', // Sender address
-        to: 'hssan.mnasri@gmail.com', // List of receivers
-        subject: 'Test Email from Express & Nodemailer', // Subject line
-        text: 'Hello world! This is a test email sent from an Express server using Nodemailer.', // Plain text body
-        html: '<b>Hello world!</b><p>This is a test email sent from an Express server using Nodemailer.</p>', // HTML body
-    };
+  const mailOptions = {
+    from: 'hssan.mnasri@gmail.com', // Sender address
+    to: 'hssan.mnasri@gmail.com', // List of receivers
+    subject: 'Test Email from Express & Nodemailer', // Subject line
+    text: 'Hello world! This is a test email sent from an Express server using Nodemailer.', // Plain text body
+    html: '<b>Hello world!</b><p>This is a test email sent from an Express server using Nodemailer.</p>', // HTML body
+  };
 
-    sendEmail(mailOptions.to, mailOptions.subject, mailOptions.html)
-       
+  sendEmail(mailOptions.to, mailOptions.subject, mailOptions.html)
+
 });
 
 // ========================================
