@@ -41,6 +41,7 @@ export default function ExerciseView({ exercise, courseId, onComplete }) {
 
             // Save to Firestore
             if (currentUser && exercise.id && courseId) {
+                console.log('🚀 Level Complete: Saving...', { level: currentLevel });
                 await exerciseService.trackLevelCompletion(
                     currentUser.uid,
                     exercise.id,
@@ -50,13 +51,20 @@ export default function ExerciseView({ exercise, courseId, onComplete }) {
 
                 // If all levels completed, mark entire exercise as complete
                 if (newCompleted.length === exercise.levels.length) {
+                    console.log('🎉 All levels done! Marking exercise complete...', { exerciseId: exercise.id });
                     await progressService.markExerciseCompleted(
                         currentUser.uid,
                         courseId,
                         exercise.id
                     );
-                    console.log('🎉 All exercise levels completed!');
+                    console.log('✅ Exercise marked complete in progress');
                 }
+            } else {
+                console.warn('⚠️ Missing data for exercise save:', {
+                    hasUser: !!currentUser,
+                    exerciseId: exercise?.id,
+                    courseId
+                });
             }
 
             onComplete?.(currentLevel);

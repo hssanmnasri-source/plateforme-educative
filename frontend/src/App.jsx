@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import DebugProgress from './pages/DebugProgress';
 
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -32,6 +33,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
           <Route path="/" element={<Home />} />
+          <Route path="/debug" element={<DebugProgress />} />
           <Route path="/courses" element={<Courses />} />
           <Route path="/courses/:id" element={<CourseDetail />} />
 

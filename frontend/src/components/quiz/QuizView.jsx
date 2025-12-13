@@ -66,21 +66,37 @@ export default function QuizView({ quiz, courseId, onComplete }) {
 
         // Save to Firestore
         if (currentUser && quiz.id && courseId) {
-            // Save quiz submission
-            await quizService.submitQuizAnswers(
-                currentUser.uid,
-                quiz.id,
-                courseId,
-                answersArray
-            );
+            console.log('🚀 Submit Quiz: Starting save process...', { userId: currentUser.uid, quizId: quiz.id, courseId });
 
-            // Mark quiz as completed in progress
-            await progressService.markQuizCompleted(
-                currentUser.uid,
-                courseId,
-                quiz.id,
-                score
-            );
+            try {
+                // Save quiz submission
+                console.log('📝 Saving answers...');
+                await quizService.submitQuizAnswers(
+                    currentUser.uid,
+                    quiz.id,
+                    courseId,
+                    answersArray
+                );
+                console.log('✅ Answers saved');
+
+                // Mark quiz as completed in progress
+                console.log('📝 Marking progress as complete...');
+                await progressService.markQuizCompleted(
+                    currentUser.uid,
+                    courseId,
+                    quiz.id,
+                    score
+                );
+                console.log('✅ Progress mark complete');
+            } catch (error) {
+                console.error('❌ Error saving quiz progress:', error);
+            }
+        } else {
+            console.warn('⚠️ Missing data for save:', {
+                hasUser: !!currentUser,
+                quizId: quiz?.id,
+                courseId
+            });
         }
 
         // Call completion callback
