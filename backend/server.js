@@ -11,6 +11,7 @@ import notificationService from './src/services/notification.service.js';
 import { sendEmail } from './emailService.js';
 import nodemailer from 'nodemailer';
 import sgMail from '@sendgrid/mail';
+import { getPaymentSuccessTemplate } from './utils/emailTemplates.js';
 
 
 dotenv.config();
@@ -655,8 +656,7 @@ app.post('/sync-payment', async (req, res) => {
     //     };
     //     sendEmail(mailOptions.to, mailOptions.subject, mailOptions.html)
 
-    // 3. Importer le template (si pas déjà importé en haut, mais on peut le faire ici pour l'instant ou déplacer l'import)
-    const { getPaymentSuccessTemplate } = require('./utils/emailTemplates');
+    // 3. Importer le template (Importé en haut du fichier)
 
     const emailSubject = `🎉 Paiement confirmé pour le cours: ${courseTitle}`;
     // Lien vers "Mes Cours" sur le frontend

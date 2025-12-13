@@ -73,4 +73,4 @@ const getPaymentSuccessTemplate = (courseTitle, paymentId, courseLink = 'https:/
     `;
 };
 
-module.exports = { getPaymentSuccessTemplate };
+export { getPaymentSuccessTemplate };
