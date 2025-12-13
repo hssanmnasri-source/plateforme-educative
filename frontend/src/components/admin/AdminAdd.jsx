@@ -1,16 +1,31 @@
 import React, { useState } from 'react';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../config/firebase.config';
 
 export default function AdminAdd({ onCreate }) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;
-    const newItem = { id: Date.now().toString(), title: title.trim(), body: content.trim(), time: new Date().toLocaleString() };
-    if (onCreate) onCreate(newItem);
-    setTitle('');
-    setContent('');
+
+    try {
+      await addDoc(collection(db, 'notifications'), {
+        title: title.trim(),
+        message: content.trim(),
+        type: 'info',
+        createdAt: serverTimestamp(),
+        // Optional: Add author info if current user is available via props or context
+      });
+
+      setTitle('');
+      setContent('');
+      if (onCreate) onCreate(); // Optional callback
+    } catch (error) {
+      console.error("Error creating notification:", error);
+      alert("Erreur lors de la création de la notification");
+    }
   };
 
   return (

@@ -1,7 +1,7 @@
 // 📁 src/pages/admin/AdminDashboard.jsx
 // ========================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Users, BookOpen, BarChart3, Settings } from 'lucide-react';
@@ -10,6 +10,8 @@ import NotificationList from '../../components/notifications/NotificationList';
 import CourseList from '../../components/admin/CourseList';
 import CourseForm from '../../components/admin/CourseForm';
 import UserList from '../../components/admin/UserList';
+import { collection, getDocs, query, where, orderBy, onSnapshot, limit } from 'firebase/firestore';
+import { db } from '../../config/firebase.config';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -26,12 +28,62 @@ export default function AdminDashboard() {
     { id: 'settings', name: 'Paramètres', icon: Settings }
   ];
 
-  const stats = [
-    { name: 'Total Utilisateurs', value: '1,234', change: '+12%', changeType: 'positive' },
-    { name: 'Cours Actifs', value: '45', change: '+3', changeType: 'positive' },
-    { name: 'Revenus ce mois', value: '€12,345', change: '+8%', changeType: 'positive' },
-    { name: 'Taux de completion', value: '78%', change: '+2%', changeType: 'positive' }
-  ];
+  const [stats, setStats] = useState([
+    { name: 'Total Utilisateurs', value: '-', change: '...', changeType: 'neutral' },
+    { name: 'Cours Actifs', value: '-', change: '...', changeType: 'neutral' },
+    { name: 'Revenus ce mois', value: '-', change: '...', changeType: 'neutral' },
+    { name: 'Taux de completion', value: '-', change: '...', changeType: 'neutral' }
+  ]);
+
+  useEffect(() => {
+    fetchStats();
+
+    // Subscribe to notifications
+    const q = query(collection(db, 'notifications'), orderBy('createdAt', 'desc'), limit(10));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setNotifications(snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        // Convert timestamp to readable date or string if needed
+        time: doc.data().createdAt?.toDate?.().toLocaleString() || new Date().toLocaleString()
+      })));
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      // 1. Users Count
+      const usersSnapshot = await getDocs(collection(db, 'users'));
+      const totalUsers = usersSnapshot.size;
+
+      // 2. Active Courses
+      const coursesQ = query(collection(db, 'courses'), where('status', '!=', 'archived'));
+      const coursesSnapshot = await getDocs(coursesQ);
+      const activeCourses = coursesSnapshot.size;
+
+      // 3. Revenue (Completed Payments)
+      const paymentsQ = query(collection(db, 'payments'), where('status', '==', 'completed'));
+      const paymentsSnapshot = await getDocs(paymentsQ);
+      const totalRevenue = paymentsSnapshot.docs.reduce((acc, doc) => acc + (Number(doc.data().amount) || 0), 0);
+
+      // 4. Completion Rate (Certificates / Users)
+      // Note: This is an approximation. Ideally calculate unique users with certificates vs total users.
+      const certificatesSnapshot = await getDocs(collection(db, 'certificates'));
+      const totalCertificates = certificatesSnapshot.size;
+      const completionRate = totalUsers > 0 ? Math.round((totalCertificates / totalUsers) * 100) : 0;
+
+      setStats([
+        { name: 'Total Utilisateurs', value: totalUsers.toString(), change: '+0%', changeType: 'neutral' },
+        { name: 'Cours Actifs', value: activeCourses.toString(), change: 'En ligne', changeType: 'positive' },
+        { name: 'Revenus Total', value: `${totalRevenue.toLocaleString()} TND`, change: 'Global', changeType: 'positive' },
+        { name: 'Taux de completion', value: `${completionRate}%`, change: `${totalCertificates} Certificats`, changeType: 'positive' }
+      ]);
+    } catch (error) {
+      console.error("Error fetching admin stats:", error);
+    }
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -59,7 +111,7 @@ export default function AdminDashboard() {
             {/* Admin tools + Recent Notifications */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="md:col-span-2">
-                <AdminAdd onCreate={(item) => setNotifications((s) => [item, ...s])} />
+                <AdminAdd />
               </div>
               <div>
                 <div className="bg-white rounded-lg shadow">

@@ -204,7 +204,7 @@ export default function Home() {
                   <div className="text-sm text-gray-600">Étudiants actifs</div>
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-gray-900">{stats.totalHours}h+</div>
+                  <div className="text-3xl font-bold text-gray-900">0</div>
                   <div className="text-sm text-gray-600">De contenu vidéo</div>
                 </div>
               </div>

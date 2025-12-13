@@ -11,7 +11,14 @@ export default function NotificationList({ items = [] }) {
   return (
     <div className="bg-white rounded-md shadow-sm overflow-hidden">
       {items.map((n) => (
-        <NotificationItem key={n.id} notification={n} />
+        // Ensure we pass data correctly. If NotificationItem expects 'notification' prop with specific fields.
+        // Our Firestore has 'title', 'message', 'createdAt'. 
+        // AdminDashboard maps 'time' string.
+        <div key={n.id} className="border-b border-gray-100 last:border-0 p-4 hover:bg-gray-50 transition-colors">
+          <h4 className="font-medium text-gray-900">{n.title}</h4>
+          <p className="text-sm text-gray-600 mt-1">{n.message || n.body}</p>
+          <p className="text-xs text-gray-400 mt-2">{n.time}</p>
+        </div>
       ))}
     </div>
   );
