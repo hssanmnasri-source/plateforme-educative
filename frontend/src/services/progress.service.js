@@ -179,6 +179,13 @@ class ProgressService {
     isLessonCompleted(lessonId, completedLessons = []) {
         return completedLessons.includes(lessonId);
     }
+
+    /**
+     * Alias pour getCourseProgress (pour compatibilité)
+     */
+    async getUserProgress(userId, courseId) {
+        return this.getCourseProgress(userId, courseId);
+    }
 }
 
 export default new ProgressService();
