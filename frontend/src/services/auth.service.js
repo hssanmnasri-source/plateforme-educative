@@ -43,7 +43,7 @@ class AuthService {
   async login(email, password) {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      
+
       await updateDoc(doc(db, 'users', userCredential.user.uid), {
         lastLogin: serverTimestamp()
       });
@@ -99,11 +99,33 @@ class AuthService {
 
   async resetPassword(email) {
     try {
-      await sendPasswordResetEmail(auth, email);
-      return { success: true, message: 'Email de réinitialisation envoyé' };
+      // Use backend API to send custom SendGrid email
+      const BACKEND_URL = import.meta.env.VITE_WEBHOOK_URL;
+
+      if (!BACKEND_URL) {
+        console.warn('VITE_WEBHOOK_URL not set, falling back to default Firebase email');
+        await sendPasswordResetEmail(auth, email);
+        return { success: true, message: 'Email envoyé (Default Firebase)' };
+      }
+
+      const response = await fetch(`${BACKEND_URL}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Erreur lors de l\'envoi de l\'email');
+      }
+
+      return { success: true, message: 'Email de réinitialisation envoyé avec succès via SendGrid' };
     } catch (error) {
       console.error('Password reset error:', error);
-      return { success: false, error: this.getErrorMessage(error.code) };
+      return { success: false, error: this.getErrorMessage(error.code) || error.message };
     }
   }
 

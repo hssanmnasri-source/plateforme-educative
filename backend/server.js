@@ -11,7 +11,7 @@ import notificationService from './src/services/notification.service.js';
 import { sendEmail } from './emailService.js';
 import nodemailer from 'nodemailer';
 import sgMail from '@sendgrid/mail';
-import { getPaymentSuccessTemplate } from './utils/emailTemplates.js';
+import { getPaymentSuccessTemplate, getPasswordResetTemplate } from './utils/emailTemplates.js';
 
 
 dotenv.config();
@@ -678,6 +678,60 @@ app.post('/sync-payment', async (req, res) => {
       console.warn('⚠️ Erreur lors de l\'envoi de l\'email (non bloquant):', emailError.message);
     }
     // ========================================
+    // 4. API Endpoint: Réinitialisation de mot de passe (Custom SendGrid)
+    // ========================================
+    // Importé en haut: import { getPasswordResetTemplate } from './utils/emailTemplates.js';
+
+    app.post('/api/auth/reset-password', async (req, res) => {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ success: false, message: 'Email requis' });
+      }
+
+      try {
+        console.log(`🔐 Demande de réinitialisation pour: ${email}`);
+
+        // 1. Générer le lien via Firebase Admin
+        // Cela génère un lien vérifié par Firebase Auth
+        const link = await admin.auth().generatePasswordResetLink(email);
+        console.log('🔗 Lien généré avec succès');
+
+        // 2. Préparer l'email avec le template
+        const emailHtml = getPasswordResetTemplate(link);
+        const msg = {
+          to: email,
+          from: process.env.SENDGRID_FROM_EMAIL || 'hssan.mnasri@gmail.com', // Fallback si var env manquante
+          subject: '🔐 Réinitialisation de votre mot de passe',
+          html: emailHtml,
+        };
+
+        // 3. Envoyer via SendGrid
+        await sgMail.send(msg);
+        console.log('✅ Email de réinitialisation envoyé par SendGrid');
+
+        return res.status(200).json({
+          success: true,
+          message: 'Un email de réinitialisation a été envoyé.'
+        });
+
+      } catch (error) {
+        console.error('❌ Erreur reset password:', error);
+
+        // Gestion des erreurs spécifiques
+        if (error.code === 'auth/user-not-found') {
+          // Pour sécurité, on dit quand même que c'est envoyé pour ne pas révéler l'existence du compte
+          // OU on retourne 404 si on préfère UX > Sécurité (ici on choisit UX pour debug facile)
+          return res.status(404).json({ success: false, message: 'Aucun compte trouvé avec cet email.' });
+        }
+
+        return res.status(500).json({
+          success: false,
+          message: 'Erreur lors de l\'envoi de l\'email.',
+          error: error.message
+        });
+      }
+    });
 
     res.json({
       success: true,
